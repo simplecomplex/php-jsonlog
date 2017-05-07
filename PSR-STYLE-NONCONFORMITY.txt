@@ -1,0 +1,10 @@
+PSR CODING STANDARD/STYLE GUIDE NONCONFORMITY NOTICE
+----------------------------------------------------
+This library deviates from PSR codings standards/style guides by these aspects:
+- indentation is 2 spaces
+- class/method opening braces goes on same line
+- secondary control structures (else) goes on next line
+- 80 line limit is only respected for comments, not code
+- 120 line limit is attempted for code, however not enforced rigorously
+- type keywords are long form, except when line limits dictates otherwise
+- switch may contain obsolete break, to prevent error upon code refactoring

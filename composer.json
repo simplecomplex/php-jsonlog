@@ -1,0 +1,26 @@
+{
+    "name": "simplecomplex/jsonlog",
+    "type": "library",
+    "description": "PSR-3 logger which files events as JSON.",
+    "keywords": ["log", "PSR-3", "JSON"],
+    "homepage": "https://github.com/simplecomplex/jsonlog",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jacob Friis Mathiasen",
+            "email": "jacob.friis@simplecomplex.net"
+        }
+    ],
+    "require": {
+        "php": ">=5.6.0"
+    },
+    "suggest": {
+        "ext-mbstring": "Lightweight UTF-8 support.",
+        "simplecomplex/inspect": "Makes var_dump() blush with shame."
+    },
+    "autoload": {
+        "psr-4": {
+            "SimpleComplex\\JsonLog\\": "src/"
+        }
+    }
+}
