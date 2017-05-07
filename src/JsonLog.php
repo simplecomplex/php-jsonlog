@@ -16,7 +16,7 @@ class JsonLog extends AbstractLogger {
   // Psr\Log\AbstractLogger properties.
 
   /**
-   * Logs if level is equal to or more than a threshold (default warning).
+   * Logs if level is equal to or more severe than a threshold; default warning.
    *
    * @throws \Psr\Log\InvalidArgumentException
    *   Propagated; invalid level argument.
@@ -48,7 +48,7 @@ class JsonLog extends AbstractLogger {
 
     $this->write();
 
-    // Pass to class var, to make generic properties and property sequence
+    // Pass event to class var, to make generic properties and property sequence
     // reusable by later log call.
 
     // Clear message, to save memory.
