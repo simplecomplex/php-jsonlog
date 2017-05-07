@@ -1,0 +1,4 @@
+
+Make php cli scripts for:
+- creating/asserting log dir
+- testing

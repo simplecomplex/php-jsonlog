@@ -16,10 +16,10 @@ class JsonLog extends AbstractLogger {
   // Psr\Log\AbstractLogger properties.
 
   /**
-   * Logs with an arbitrary level.
+   * Logs if level is equal to or more than a threshold (default warning).
    *
-   * @throws InvalidArgumentException
-   *   Invalid level argument.
+   * @throws \Psr\Log\InvalidArgumentException
+   *   Propagated; invalid level argument.
    *
    * @param mixed $level
    *   String (word): value as defined by Psr\Log\LogLevel class constants.
@@ -32,60 +32,13 @@ class JsonLog extends AbstractLogger {
    * @return void
    */
   public function log($level, $message, array $context = array()) {
-    static $threshold = -1;
+    $severity = static::severity($level);
 
-    // Support integer RFC 5424 as well as words defined by PSR-4.
-    $severity = '' . $level;
-    if (ctype_digit($level)) {
-      switch ($severity) {
-        case '' . LOG_EMERG:
-          $severity = LogLevel::EMERGENCY;
-          break;
-        case '' . LOG_ALERT:
-          $severity = LogLevel::ALERT;
-          break;
-        case '' . LOG_CRIT:
-          $severity = LogLevel::CRITICAL;
-          break;
-        case '' . LOG_ERR:
-          $severity = LogLevel::ERROR;
-          break;
-        case '' . LOG_WARNING:
-          $severity = LogLevel::WARNING;
-          break;
-        case '' . LOG_NOTICE:
-          $severity = LogLevel::NOTICE;
-          break;
-        case '' . LOG_INFO:
-          $severity = LogLevel::INFO;
-          break;
-        case '' . LOG_DEBUG:
-          $severity = LogLevel::DEBUG;
-          break;
-        default:
-          throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-      }
-    }
-    else {
-      switch ($severity) {
-        case LogLevel::EMERGENCY;
-        case LogLevel::ALERT;
-        case LogLevel::CRITICAL;
-        case LogLevel::ERROR;
-        case LogLevel::WARNING;
-        case LogLevel::NOTICE;
-        case LogLevel::INFO;
-        case LogLevel::DEBUG;
-          // Level/severity A-OK.
-          break;
-        default:
-          throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-      }
-    }
-
+    $threshold = static::$threshold;
     if ($threshold == -1) {
-      $threshold = static::configGet(static::CONFIG_DOMAIN, 'threshold', static::THRESHOLD_DEFAULT);
+      static::$threshold = $threshold = static::configGet(static::CONFIG_DOMAIN, 'threshold', static::THRESHOLD_DEFAULT);
     }
+    // More is less.
     if ($severity > $threshold) {
       return;
     }
@@ -93,9 +46,15 @@ class JsonLog extends AbstractLogger {
     $this->setEventGenerics();
     $this->setEventSpecifics($severity, $message, $context);
 
-    static::write();
+    $this->write();
 
-    static::$event['message'] = '';
+    // Pass to class var, to make generic properties and property sequence
+    // reusable by later log call.
+
+    // Clear message, to save memory.
+    $this->event['message'] = '';
+
+    static::$eventLast = $this->event;
   }
 
 
@@ -142,6 +101,20 @@ class JsonLog extends AbstractLogger {
   const SUBTYPE_DEFAULT = 'component';
 
   /**
+   * Context placeholder prefix in message.
+   *
+   * @var string
+   */
+  const PLACEHOLDER_PREFIX = '{';
+
+  /**
+   * Context placeholder suffix in message.
+   *
+   * @var string
+   */
+  const PLACEHOLDER_SUFFIX = '}';
+
+  /**
    * List of event properties used; key is internal name, value is the name used
    * in actual log entry.
    *
@@ -159,7 +132,14 @@ class JsonLog extends AbstractLogger {
    *  - (int) code: could be an error code
    *  - (null|arr) trunc: [orig. length, final length] if message truncated
    *
-   *  Beware - these properties will not be set if empty:
+   *  Props generic across log events of a request:
+   *  - version, site_id, canonical, tags, type,
+   *    method, request_uri, referer, client_ip, useragent
+   *
+   *  Event-specific props:
+   *  - message, timestamp, message_id, subtype, severity, username, code, trunc
+   *
+   *  Beware - these properties will only be set if non-empty:
    *  - canonical
    *  - tags
    *
@@ -181,6 +161,7 @@ class JsonLog extends AbstractLogger {
     'referer' => 'referer',
     'username' => 'username',
     'client_ip' => 'client_ip',
+    'useragent' => 'useragent',
     'code' => 'code',
     'trunc' => 'trunc',
   );
@@ -194,12 +175,17 @@ class JsonLog extends AbstractLogger {
    *
    * @var array
    */
-  protected static $event = array();
+  protected static $eventLast = array();
 
   /**
    * @var integer
    */
-  protected static $eventTruncate = 0;
+  protected static $threshold = -1;
+
+  /**
+   * @var integer
+   */
+  protected static $eventTruncate = 64;
 
   /**
    * @var string
@@ -212,34 +198,37 @@ class JsonLog extends AbstractLogger {
   protected static $file = '';
 
   /**
+   * @var array
+   */
+  protected $event = array();
+
+  /**
    * Sets event prop values that are common across events of the same request.
    *
    * @return void
    */
   protected function setEventGenerics() {
-    // Nothing generic to do if there's a previous event at hand.
-    if (static::$event) {
+    $siteId = static::$siteId;
+    if (!$siteId) {
+      static::$siteId = $siteId = static::siteId();
+    }
+
+    // If there's a previous event, copy that to reuse generic properties
+    // and keep the property sequence of eventTemplate.
+    if (static::$eventLast) {
+      $this->event = static::$eventLast;
       return;
     }
 
     $eventTemplate =& static::$eventTemplate;
     $event = array_flip($eventTemplate);
 
-    if (isset($eventTemplate['timestamp'])) {
-      // PHP formats iso 8601 with timezone; we use UTC Z.
-      $millis = round(microtime(true) * 1000);
-      $seconds = (int) floor($millis / 1000);
-      $millis -= $seconds * 1000;
-      $millis = str_pad($millis, 3, '0', STR_PAD_LEFT);
-      $event[$eventTemplate['timestamp']] = substr(gmdate('c', $seconds), 0, 19) . '.' . $millis . 'Z';
-    }
-
     if (isset($eventTemplate['version'])) {
       $event[$eventTemplate['version']] = 1;
     }
 
     if (isset($eventTemplate['site_id'])) {
-      $event[$eventTemplate['site_id']] = static::$siteId = static::siteId();
+      $event[$eventTemplate['site_id']] = $siteId;
     }
 
     // Don't set canonical unless non-empty.
@@ -263,12 +252,13 @@ class JsonLog extends AbstractLogger {
     }
 
     if (isset($eventTemplate['method'])) {
-      $event[$eventTemplate['method']] = !empty($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'cli';
+      $event[$eventTemplate['method']] = !empty($_SERVER['REQUEST_METHOD']) ?
+        static::sanitizeAscii($_SERVER['REQUEST_METHOD']) : 'cli';
     }
 
     if (isset($eventTemplate['request_uri'])) {
       if (!empty($_SERVER['REQUEST_URI'])) {
-        $requestUri = $_SERVER['REQUEST_URI'];
+        $requestUri = static::sanitizeUnicode($_SERVER['REQUEST_URI']);
       }
       elseif (!empty($_SERVER['SCRIPT_NAME'])) {
         $requestUri = $_SERVER['SCRIPT_NAME'];
@@ -279,7 +269,7 @@ class JsonLog extends AbstractLogger {
           }
         }
         elseif (!empty($_SERVER['QUERY_STRING'])) {
-          $requestUri .= '?' . $_SERVER['QUERY_STRING'];
+          $requestUri .= '?' . static::sanitizeUnicode($_SERVER['QUERY_STRING']);
         }
       }
       else {
@@ -289,7 +279,8 @@ class JsonLog extends AbstractLogger {
     }
 
     if (isset($eventTemplate['referer'])) {
-      $event[$eventTemplate['referer']] = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+      $event[$eventTemplate['referer']] = !empty($_SERVER['HTTP_REFERER']) ?
+        static::sanitizeUnicode($_SERVER['HTTP_REFERER']) : '';
     }
 
     if (isset($eventTemplate['client_ip'])) {
@@ -302,7 +293,7 @@ class JsonLog extends AbstractLogger {
           // 'client, proxy-1, proxy-2, ...'.
           $proxyHeader = static::configGet(static::CONFIG_DOMAIN, 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR');
           if ($proxyHeader && !empty($_SERVER[$proxyHeader])) {
-            $ips = str_replace(' ', '', $_SERVER[$proxyHeader]);
+            $ips = str_replace(' ', '', static::sanitizeAscii($_SERVER[$proxyHeader]));
             if ($ips) {
               $ips = explode(',', $ips);
               // Append direct client IP, in case it is missing in the
@@ -329,20 +320,29 @@ class JsonLog extends AbstractLogger {
       $event[$eventTemplate['client_ip']] = $clientIp;
     }
 
+    $userAgent = '';
+    if (isset($eventTemplate['useragent'])) {
+      $event[$eventTemplate['useragent']] = !empty($_SERVER['HTTP_USER_AGENT']) ?
+        static::multiByteSubString(static::sanitizeUnicode($_SERVER['HTTP_USER_AGENT']), 0, 100) : '';
+    }
+
     // Establish configured truncation once and for all.
-    $truncate = static::configGet(static::CONFIG_DOMAIN, 'truncate', 0);
+    $truncate = static::configGet(static::CONFIG_DOMAIN, 'truncate', static::TRUNCATE_DEFAULT);
     if ($truncate) {
       // Kb to bytes.
       $truncate *= 1024;
       // Substract estimated max length of everything but message content.
       $truncate -= 768;
+      if ($userAgent) {
+        $truncate -= strlen($userAgent);
+      }
       // Message will get longer when JSON encoded, because of hex encoding of
       // <>&" chars.
       $truncate *= 7 / 8;
     }
     static::$eventTruncate = $truncate;
 
-    static::$event =& $event;
+    $this->event =& $event;
   }
 
   /**
@@ -356,20 +356,24 @@ class JsonLog extends AbstractLogger {
    * @return void
    */
   protected function setEventSpecifics($severity, $message, $context = []) {
-    // Paranoid.
-    if (!static::$event) {
-      $this->setEventGenerics();
-    }
-    $event =& static::$event;
-
+    $event =& $this->event;
     $eventTemplate =& static::$eventTemplate;
 
     // 'message' is the only mandatory property.
-    $messageNTrunc = $this->eventMessageNTruc($message, $context);
+    $messageNTrunc = $this->eventMessageNTrunc($message, $context);
     $event[$eventTemplate['message']] = $messageNTrunc[0];
 
     if (isset($eventTemplate['trunc'])) {
       $event[$eventTemplate['trunc']] = $messageNTrunc[1];
+    }
+
+    if (isset($eventTemplate['timestamp'])) {
+      // PHP formats iso 8601 with timezone; we use UTC Z.
+      $millis = round(microtime(true) * 1000);
+      $seconds = (int) floor($millis / 1000);
+      $millis -= $seconds * 1000;
+      $millis = str_pad($millis, 3, '0', STR_PAD_LEFT);
+      $event[$eventTemplate['timestamp']] = substr(gmdate('c', $seconds), 0, 19) . '.' . $millis . 'Z';
     }
 
     if (isset($eventTemplate['subtype'])) {
@@ -405,14 +409,18 @@ class JsonLog extends AbstractLogger {
    *
    * @return array
    */
-  protected function eventMessageNTruc($message, array $context) {
+  protected function eventMessageNTrunc($message, array $context) {
     $trunc = null;
     // Make sure it's a string, before manipulating as such.
     $msg = '' . $message;
     if ($msg) {
       // Replace placeholder vars.
-      foreach ($context as $key => $val) {
-        $msg = str_replace('{' . $key . '}', static::plaintext($val), $msg);
+      if ($context) {
+        $placeHolderPrefix = static::PLACEHOLDER_PREFIX;
+        $placeHolderSuffix = static::PLACEHOLDER_SUFFIX;
+        foreach ($context as $key => $val) {
+          $msg = str_replace($placeHolderPrefix . $key . $placeHolderSuffix, static::plaintext($val), $msg);
+        }
       }
 
       // Strip tags if message starts with < (Inspect logs in tag).
@@ -485,8 +493,135 @@ class JsonLog extends AbstractLogger {
   }
 
   /**
+   * Establish path and file.
+   *
+   * Logs to default error_log if the dir (path really) cannot be established.
+   *
+   * @return string
+   */
+  protected function file() {
+    $siteId = static::$siteId;
+    if (!$siteId) {
+      static::$siteId = $siteId = static::siteId();
+    }
+
+    $dir = static::configGet(static::CONFIG_DOMAIN, 'dir');
+    if (!$dir) {
+      $dir = static::dir();
+    }
+    if (!$dir) {
+      error_log('jsonlog, site ID[' . $siteId . '], cannot establish log dir.');
+      return '';
+    }
+
+    $fileTime = static::configGet(static::CONFIG_DOMAIN, 'file_time', 'Ymd');
+    if ($fileTime == 'none') {
+      $fileTime = '';
+    }
+    if ($fileTime) {
+      $fileTime = '.' . date($fileTime);
+    }
+
+    return rtrim($dir, '/') . '/' . $siteId . $fileTime . '.json.log';
+  }
+
+  /**
+   * @return boolean
+   */
+  protected function write() {
+    $siteId = static::$siteId;
+    if (!$siteId) {
+      static::$siteId = $siteId = static::siteId();
+    }
+
+    $file = static::$file;
+    if (!$file) {
+      static::$file = $file = $this->file();
+    }
+
+    // File append, using lock (write, doesn't prevent reading).
+    $success = file_put_contents(
+      $file,
+      json_encode($this->event, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT),
+      FILE_APPEND | LOCK_EX
+    );
+    // If failure: log filing error to host's default log.
+    if (!$success) {
+      error_log('jsonlog, site ID[' . $siteId . '], failed to write to file[' . $file . '].');
+    }
+
+    return $success;
+  }
+
+  /**
+   * @throws \Psr\Log\InvalidArgumentException
+   *   Invalid level argument.
+   *
+   * @param mixed $level
+   *   String (word): value as defined by Psr\Log\LogLevel class constants.
+   *   Integer|stringed integer: between zero and seven.
+   *
+   * @return string
+   *   Equivalent to a Psr\Log\LogLevel class constant.
+   */
+  public static function severity($level) {
+    // Support integer RFC 5424 as well as words defined by PSR-4.
+    $severity = '' . $level;
+    if (ctype_digit($level)) {
+      switch ($severity) {
+        case '' . LOG_EMERG:
+          $severity = LogLevel::EMERGENCY;
+          break;
+        case '' . LOG_ALERT:
+          $severity = LogLevel::ALERT;
+          break;
+        case '' . LOG_CRIT:
+          $severity = LogLevel::CRITICAL;
+          break;
+        case '' . LOG_ERR:
+          $severity = LogLevel::ERROR;
+          break;
+        case '' . LOG_WARNING:
+          $severity = LogLevel::WARNING;
+          break;
+        case '' . LOG_NOTICE:
+          $severity = LogLevel::NOTICE;
+          break;
+        case '' . LOG_INFO:
+          $severity = LogLevel::INFO;
+          break;
+        case '' . LOG_DEBUG:
+          $severity = LogLevel::DEBUG;
+          break;
+        default:
+          throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
+      }
+    }
+    else {
+      switch ($severity) {
+        case LogLevel::EMERGENCY;
+        case LogLevel::ALERT;
+        case LogLevel::CRITICAL;
+        case LogLevel::ERROR;
+        case LogLevel::WARNING;
+        case LogLevel::NOTICE;
+        case LogLevel::INFO;
+        case LogLevel::DEBUG;
+          // Level/severity A-OK.
+          break;
+        default:
+          throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
+      }
+    }
+
+    return $severity;
+  }
+
+  /**
    * This implementation uses a document root dir name as fallback, if no
    * 'siteid' conf var set.
+   *
+   * Attempts to save site ID to conf var 'siteid'.
    *
    * @return string
    */
@@ -519,16 +654,23 @@ class JsonLog extends AbstractLogger {
           $siteId = $dirs[0];
         }
       }
-      if (!$siteId) {
+      if ($siteId) {
+        // Save it; kind of expensive to establish.
+        static::configSet(static::CONFIG_DOMAIN, 'siteid', $siteId);
+      }
+      else {
         $siteId = 'unknown';
       }
     }
-    return '' . $siteId;
+
+    return $siteId;
   }
 
   /**
    * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
    * as fallback when conf var 'dir' not set.
+   *
+   * Attempts to save the directory to conf var 'dir'.
    *
    * @return string
    */
@@ -560,52 +702,14 @@ class JsonLog extends AbstractLogger {
     }
 
     if ($dir) {
-      return $dir . '/jsonlog';
+      $dir .= '/jsonlog';
+      // Save it; kind of expensive to establish.
+      static::configSet(static::CONFIG_DOMAIN, 'dir', $dir);
+
+      return $dir;
     }
-    
+
     return '';
-  }
-
-  /**
-   * @return boolean
-   */
-  protected static function write() {
-    $siteId = static::$siteId;
-    if (!$siteId) {
-      static::$siteId = $siteId = static::siteId();
-    }
-
-    $file = static::$file;
-    if (!$file) {
-      $dir = static::dir();
-      if (!$dir) {
-        error_log('jsonlog, site ID[' . $siteId . '], cannot establish log dir.');
-        return false;
-      }
-
-      $fileTime = static::configGet(static::CONFIG_DOMAIN, 'file_time', 'Ymd');
-      if ($fileTime == 'none') {
-        $fileTime = '';
-      }
-      if ($fileTime) {
-        $fileTime = '.' . date($fileTime);
-      }
-
-      static::$file = $file = rtrim($dir, '/') . '/' . $siteId . $fileTime . '.json.log';
-    }
-
-    // File append, using lock (write, doesn't prevent reading).
-    $success = file_put_contents(
-      $file,
-      json_encode(static::$event, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT),
-      FILE_APPEND | LOCK_EX
-    );
-    // If failure: log filing error to host's default log.
-    if (!$success) {
-      error_log('jsonlog, site ID[' . $siteId . '], failed to write to file[' . $file . '].');
-    }
-
-    return $success;
   }
 
   /**
@@ -660,6 +764,24 @@ class JsonLog extends AbstractLogger {
    */
   protected static function plaintext($str) {
     return htmlspecialchars(strip_tags($str), ENT_QUOTES, 'UTF-8');
+  }
+
+  /**
+   * @param string $str
+   *
+   * @return string
+   */
+  protected static function sanitizeAscii($str) {
+    return filter_var($str, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH);
+  }
+
+  /**
+   * @param string $str
+   *
+   * @return string
+   */
+  protected static function sanitizeUnicode($str) {
+    return filter_var($str, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
   }
 
   /**
