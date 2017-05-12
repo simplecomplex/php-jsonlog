@@ -1,7 +1,12 @@
 jsonlog 1.x, 2017-05-12
 -----------------------
+- Most of the logic moved to event class, to be dependency injected via
+  JsonLog's constructor.
+- All log properties split into site/request/event specific columns.
+- Every column has (must have) a same-named getter.
 - Removed '@version' property; seems to be something only logstash uses or sets.
 - Added 'host' property.
+- Renamed 'level' property; from 'severity'.
 
 jsonlog 1.x, 2017-05-07
 -----------------------

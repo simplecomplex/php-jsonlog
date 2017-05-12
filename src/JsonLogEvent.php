@@ -8,6 +8,9 @@ use Psr\Log\InvalidArgumentException;
 /**
  * JsonLog event.
  *
+ * Extend this class instead of JsonLog self, and then use JsonLog constructor's
+ * class dependency injection.
+ *
  * @package SimpleComplex\JsonLog
  */
 class JsonLogEvent {
@@ -50,7 +53,7 @@ class JsonLogEvent {
    *
    * @var string
    */
-  const SUBTYPE_DEFAULT = 'component';
+  const SUB_TYPE_DEFAULT = 'component';
 
   /**
    * Context placeholder prefix in message.
@@ -67,10 +70,12 @@ class JsonLogEvent {
   const PLACEHOLDER_SUFFIX = '}';
 
   /**
-   * List of site/system columns.
+   * List of site (system) columns.
    *
    * Key is the property's get method; value is the property's name when logged.
    * Beware: Fatal error if a method doesn't exist.
+   *
+   * All column methods must return string or number.
    *
    *  Overriding class may:
    *  - list less columns
@@ -93,7 +98,7 @@ class JsonLogEvent {
   );
 
   /**
-   * List of request/process columns.
+   * List of request (process) columns.
    *
    * @see JsonLog::$columnsSite
    *
@@ -129,7 +134,7 @@ class JsonLogEvent {
     'timestamp' => '@timestamp',
     'eventId' => 'message_id',
     'subType' => 'subtype',
-    'severity' => 'severity',
+    'level' => 'level',
     'code' => 'code',
     'truncation' => 'trunc',
     'userName' => 'username',
@@ -163,7 +168,7 @@ class JsonLogEvent {
   /**
    * @var string
    */
-  protected $level = '';
+  protected $level = LogLevel::DEBUG;
 
   /**
    * @var integer
@@ -205,6 +210,7 @@ class JsonLogEvent {
     $this->severity = static::levelToInteger($level);
     // Stringify if not string.
     $this->messageRaw = '' . $message;
+
     $this->context = $context;
   }
 
@@ -282,6 +288,10 @@ class JsonLogEvent {
   // Site column getters.-------------------------------------------------------
 
   /**
+   * Uses conf var 'type', defaults to TYPE_DEFAULT.
+   *
+   * @see JsonLogEvent::TYPE_DEFAULT
+   *
    * @return string
    */
   public function type() {
@@ -304,7 +314,7 @@ class JsonLogEvent {
   }
 
   /**
-   * Record siteId, because may be used many times; even during each entry.
+   * Record siteId, because may be used many times; even during each event.
    *
    * @var string
    */
@@ -503,10 +513,10 @@ class JsonLogEvent {
     // Replace placeholder vars.
     $context =& $this->context;
     if ($context) {
-      $placeHolderPrefix = static::PLACEHOLDER_PREFIX;
-      $placeHolderSuffix = static::PLACEHOLDER_SUFFIX;
+      $prefix = static::PLACEHOLDER_PREFIX;
+      $suffix = static::PLACEHOLDER_SUFFIX;
       foreach ($context as $key => $val) {
-        $msg = str_replace($placeHolderPrefix . $key . $placeHolderSuffix, static::plaintext($val), $msg);
+        $msg = str_replace($prefix . $key . $suffix, static::plaintext($val), $msg);
       }
     }
 
@@ -537,7 +547,7 @@ class JsonLogEvent {
         $truncate *= 1024;
         // Substract estimated max length of everything but message content.
         $truncate -= 768;
-        // Useragent length is customizable; may be used but anyway.
+        // Useragent length is customizable; may not be used but anyway.
         $truncate -= static::USER_AGENT_TRUNCATE;
         // Message will get longer when JSON encoded, because of hex encoding of
         // <>&" chars.
@@ -589,429 +599,209 @@ class JsonLogEvent {
   }
 
   /**
-  'eventId' => 'message_id',
-  'subType' => 'subtype',
-  'severity' => 'severity',
-  'code' => 'code',
-  'truncation' => 'trunc',
-  'userName' => 'username',
-   */
-
-
-  /**
-   * Sets event prop values that are common across events of the same request.
-   *
-   * @return void
-   */
-  protected function setEventGenerics() {
-    $siteId = static::$siteId;
-    if (!$siteId) {
-      static::$siteId = $siteId = static::siteId();
-    }
-
-    // If there's a previous event, copy that to reuse generic properties
-    // and keep the property sequence of eventTemplate.
-    if (static::$eventLast) {
-      $this->event = static::$eventLast;
-      return;
-    }
-
-    $eventTemplate =& static::$eventTemplate;
-    $event = array_flip($eventTemplate);
-
-    if (isset($eventTemplate['version'])) {
-      $event[$eventTemplate['version']] = 1;
-    }
-
-    if (isset($eventTemplate['site_id'])) {
-      $event[$eventTemplate['site_id']] = $siteId;
-    }
-
-    // Don't set canonical unless non-empty.
-    if (isset($eventTemplate['canonical'])) {
-      $canonical = static::configGet(static::CONFIG_DOMAIN, 'canonical', '');
-      if ($canonical) {
-        $event[$eventTemplate['canonical']] = $canonical;
-      }
-    }
-
-    // Don't set tags unless non-empty.
-    if (isset($eventTemplate['tags'])) {
-      $tags = static::configGet(static::CONFIG_DOMAIN, 'tags');
-      if ($tags) {
-        $event[$eventTemplate['tags']] = join(',', $tags);
-      }
-    }
-
-    if (isset($eventTemplate['type'])) {
-      $event[$eventTemplate['type']] = static::configGet(static::CONFIG_DOMAIN, 'type', static::TYPE_DEFAULT);
-    }
-
-    if (isset($eventTemplate['method'])) {
-      $event[$eventTemplate['method']] = !empty($_SERVER['REQUEST_METHOD']) ?
-        static::sanitizeAscii($_SERVER['REQUEST_METHOD']) : 'cli';
-    }
-
-    if (isset($eventTemplate['request_uri'])) {
-      if (!empty($_SERVER['REQUEST_URI'])) {
-        $requestUri = static::sanitizeUnicode($_SERVER['REQUEST_URI']);
-      }
-      elseif (!empty($_SERVER['SCRIPT_NAME'])) {
-        $requestUri = $_SERVER['SCRIPT_NAME'];
-        // CLI.
-        if (isset($_SERVER['argv'])) {
-          if ($_SERVER['argv']) {
-            $requestUri .= '?' . $_SERVER['argv'][0];
-          }
-        }
-        elseif (!empty($_SERVER['QUERY_STRING'])) {
-          $requestUri .= '?' . static::sanitizeUnicode($_SERVER['QUERY_STRING']);
-        }
-      }
-      else {
-        $requestUri = '/';
-      }
-      $event[$eventTemplate['request_uri']] = $requestUri;
-    }
-
-    if (isset($eventTemplate['referer'])) {
-      $event[$eventTemplate['referer']] = !empty($_SERVER['HTTP_REFERER']) ?
-        static::sanitizeUnicode($_SERVER['HTTP_REFERER']) : '';
-    }
-
-    if (isset($eventTemplate['client_ip'])) {
-      $clientIp = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
-      if ($clientIp) {
-        // Get list of configured trusted proxy IPs.
-        $proxyIps = static::configGet(static::CONFIG_DOMAIN, 'reverse_proxy_addresses');
-        if ($proxyIps) {
-          // Get 'forwarded for' header, ideally listing
-          // 'client, proxy-1, proxy-2, ...'.
-          $proxyHeader = static::configGet(static::CONFIG_DOMAIN, 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR');
-          if ($proxyHeader && !empty($_SERVER[$proxyHeader])) {
-            $ips = str_replace(' ', '', static::sanitizeAscii($_SERVER[$proxyHeader]));
-            if ($ips) {
-              $ips = explode(',', $ips);
-              // Append direct client IP, in case it is missing in the
-              // 'forwarded for' header.
-              $ips[] = $clientIp;
-              // Remove trusted proxy IPs.
-              $netIps = array_diff($ips, $proxyIps);
-              if ($netIps) {
-                // The right-most is the most specific.
-                $clientIp = end($netIps);
-              }
-              else {
-                // The 'forwarded for' header contained known proxy IPs only;
-                // use the first of them
-                $clientIp = reset($ips);
-              }
-            }
-          }
-        }
-      }
-      if ($clientIp && $clientIp != filter_var($clientIp, FILTER_VALIDATE_IP)) {
-        $clientIp = '';
-      }
-      $event[$eventTemplate['client_ip']] = $clientIp;
-    }
-
-    $userAgent = '';
-    if (isset($eventTemplate['useragent'])) {
-      $event[$eventTemplate['useragent']] = !empty($_SERVER['HTTP_USER_AGENT']) ?
-        static::multiByteSubString(static::sanitizeUnicode($_SERVER['HTTP_USER_AGENT']), 0, 100) : '';
-    }
-
-    // Establish configured truncation once and for all.
-    $truncate = static::configGet(static::CONFIG_DOMAIN, 'truncate', static::TRUNCATE_DEFAULT);
-    if ($truncate) {
-      // Kb to bytes.
-      $truncate *= 1024;
-      // Substract estimated max length of everything but message content.
-      $truncate -= 768;
-      if ($userAgent) {
-        $truncate -= strlen($userAgent);
-      }
-      // Message will get longer when JSON encoded, because of hex encoding of
-      // <>&" chars.
-      $truncate *= 7 / 8;
-    }
-    static::$eventTruncate = $truncate;
-
-    $this->event =& $event;
-  }
-
-  /**
-   * Sets event prop values that are common across events of the same request.
-   *
-   * @param integer $severity
-   * @param mixed $message
-   *   Gets stringed.
-   * @param array $context
-   *
-   * @return void
-   */
-  protected function setEventSpecifics($severity, $message, $context = []) {
-    $event =& $this->event;
-    $eventTemplate =& static::$eventTemplate;
-
-    // 'message' is the only mandatory property.
-    $messageNTrunc = $this->eventMessageNTrunc($message, $context);
-    $event[$eventTemplate['message']] = $messageNTrunc[0];
-
-    if (isset($eventTemplate['trunc'])) {
-      $event[$eventTemplate['trunc']] = $messageNTrunc[1];
-    }
-
-    if (isset($eventTemplate['timestamp'])) {
-      // PHP formats iso 8601 with timezone; we use UTC Z.
-      $millis = round(microtime(true) * 1000);
-      $seconds = (int) floor($millis / 1000);
-      $millis -= $seconds * 1000;
-      $millis = str_pad($millis, 3, '0', STR_PAD_LEFT);
-      $event[$eventTemplate['timestamp']] = substr(gmdate('c', $seconds), 0, 19) . '.' . $millis . 'Z';
-    }
-
-    if (isset($eventTemplate['subtype'])) {
-      $event[$eventTemplate['subtype']] = $this->eventSubtype($context);
-    }
-
-    if (isset($eventTemplate['severity'])) {
-      $event[$eventTemplate['severity']] = $severity;
-    }
-
-    // username is event specific, because it may change between log calls.
-    if (isset($eventTemplate['username'])) {
-      $event[$eventTemplate['username']] = $this->eventUsername($context);
-    }
-
-    if (isset($eventTemplate['code'])) {
-      $event[$eventTemplate['code']] = $this->eventCode($context);
-    }
-
-    // 'message_id' must be set as last, because eventMessageId() algo may use
-    // any event property(ies) to define unique identifier.
-    if (isset($eventTemplate['message_id'])) {
-      $event[$eventTemplate['message_id']] = $this->eventMessageId($event);
-    }
-  }
-
-  /**
-   * Truncates (if required), replaces arg context placeholders.
-   *
-   * @param mixed $message
-   *   Will be stringed.
-   * @param array $context
-   *
-   * @return array
-   */
-  protected function eventMessageNTrunc($message, array $context) {
-    $trunc = null;
-    // Make sure it's a string, before manipulating as such.
-    $msg = '' . $message;
-    if ($msg) {
-      // Replace placeholder vars.
-      if ($context) {
-        $placeHolderPrefix = static::PLACEHOLDER_PREFIX;
-        $placeHolderSuffix = static::PLACEHOLDER_SUFFIX;
-        foreach ($context as $key => $val) {
-          $msg = str_replace($placeHolderPrefix . $key . $placeHolderSuffix, static::plaintext($val), $msg);
-        }
-      }
-
-      // Strip tags if message starts with < (Inspect logs in tag).
-      if (
-        !static::configGet(static::CONFIG_DOMAIN, 'keep_enclosing_tag')
-        && $msg{0} === '<'
-      ) {
-        $msg = strip_tags($msg);
-      }
-
-      // Escape null byte.
-      $msg = str_replace("\0", '_NUL_', $msg);
-
-      // Truncate message.
-      $truncate = static::$eventTruncate;
-      // Deliberately multibyte length.
-      if ($truncate && ($le = strlen($msg)) > $truncate) {
-        // Truncate multibyte safe until ASCII length is equal to/less than max.
-        // byte length.
-        $trunc = array(
-          $le,
-          strlen($msg = static::truncateBytes($msg, $truncate))
-        );
-      }
-    }
-    return array(
-      $msg,
-      $trunc
-    );
-  }
-
-  /**
-   * @param array $context
-   *
    * @return string
    */
-  protected function eventSubtype(array $context) {
-    return !empty($context['subtype']) ? $context['subtype'] : static::SUBTYPE_DEFAULT;
-  }
-
-  /**
-   * @param array $context
-   *
-   * @return string
-   */
-  protected function eventUsername(array $context) {
-    return !empty($context['username']) ? $context['username'] : '';
-  }
-
-  /**
-   * @param array $context
-   *
-   * @return integer
-   */
-  protected function eventCode(array $context) {
-    return !empty($context['code']) ? (int) $context['code'] : 0;
-  }
-
-  /**
-   * @param array $event
-   *   Must be fully populated (see $eventTemplate).
-   *
-   * @return string
-   */
-  protected function eventMessageId(array $event) {
+  public function eventId() {
     return uniqid(
-      isset($eventTemplate['site_id']) ? $event[$eventTemplate['site_id']] : '',
+      $this->siteId(),
       true
     );
   }
 
   /**
-   * Establish path and file.
+   * Uses context 'subType' or 'subtype'; default SUB_TYPE_DEFAULT.
    *
-   * Logs to default error_log if the dir (path really) cannot be established.
+   * @see JsonLogEvent::SUB_TYPE_DEFAULT
    *
    * @return string
    */
-  protected function file() {
-    $siteId = static::$siteId;
-    if (!$siteId) {
-      static::$siteId = $siteId = static::siteId();
+  public function subType() {
+    $context =& $this->context;
+    if ($context) {
+      if (!empty($context['subType'])) {
+        return $context['subType'];
+      }
+      if (!empty($context['subtype'])) {
+        return $context['subtype'];
+      }
     }
-
-    $dir = static::configGet(static::CONFIG_DOMAIN, 'dir');
-    if (!$dir) {
-      $dir = static::dir();
-    }
-    if (!$dir) {
-      error_log('jsonlog, site ID[' . $siteId . '], cannot establish log dir.');
-      return '';
-    }
-
-    $fileTime = static::configGet(static::CONFIG_DOMAIN, 'file_time', 'Ymd');
-    if ($fileTime == 'none') {
-      $fileTime = '';
-    }
-    if ($fileTime) {
-      $fileTime = '.' . date($fileTime);
-    }
-
-    return rtrim($dir, '/') . '/' . $siteId . $fileTime . '.json.log';
+    return static::SUB_TYPE_DEFAULT;
   }
 
   /**
-   * @return boolean
+   * @see \Psr\Log\LogLevel
+   *
+   * @return string
    */
-  protected function write() {
-    $siteId = static::$siteId;
-    if (!$siteId) {
-      static::$siteId = $siteId = static::siteId();
+  public function level() {
+    return $this->level;
+  }
+
+  /**
+   * Uses context 'code', 'errorCode' or 'error_code'; default zero.
+   *
+   * @return integer
+   */
+  public function code() {
+    $context =& $this->context;
+    if ($context) {
+      if (!empty($context['code'])) {
+        return $context['code'];
+      }
+      if (!empty($context['errorCode'])) {
+        return $context['errorCode'];
+      }
+      if (!empty($context['error_code'])) {
+        return $context['error_code'];
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Uses context 'username' or 'userName'; default empty.
+   *
+   * @return string
+   */
+  public function userName() {
+    $context =& $this->context;
+    if ($context) {
+      if (!empty($context['username'])) {
+        return $context['username'];
+      }
+      if (!empty($context['userName'])) {
+        return $context['userName'];
+      }
+    }
+    return '';
+  }
+
+
+  // Non-column methods and helpers.--------------------------------------------
+
+  /**
+   * Default webserver log dirs of major *nix distros.
+   *
+   * @var array
+   */
+  protected static $logDirDefaults = array(
+    // Debian Apache.
+    '/var/log/apache2',
+    // Redhat Apache.
+    '/var/log/httpd',
+    // nginx.
+    '/var/log/nginx',
+  );
+
+  /**
+   * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
+   * as fallback when conf var 'dir' not set.
+   *
+   * Attempts to log to error_log if failing to establish dir.
+   *
+   * @param boolean $noSave
+   *
+   * @return string
+   */
+  public function getDir($noSave = false) {
+    $dir = static::configGet(static::CONFIG_DOMAIN, 'dir', '');
+    if ($dir) {
+      return $dir;
     }
 
+    $host_log = ini_get('error_log');
+    if (!$host_log || $host_log === 'syslog') {
+      // Try default web server log dirs for common *nix distributions.
+      foreach (static::$logDirDefaults as $val) {
+        if (file_exists($val)) {
+          $dir = $val;
+          break;
+        }
+      }
+    }
+    elseif (DIRECTORY_SEPARATOR != '/') {
+      $dir = str_replace('\\', '/', dirname($host_log));
+    }
+
+    if ($dir) {
+      $dir .= '/jsonlog';
+
+      if (!$noSave) {
+        static::configSet(static::CONFIG_DOMAIN, 'dir', $dir);
+      }
+      return $dir;
+    }
+
+    error_log('jsonlog, site ID[' . $this->siteId(true) . '], cannot establish log dir.');
+
+    return '';
+  }
+
+  /**
+   * @var string
+   */
+  protected static $file = '';
+
+  /**
+   * Get path and filename.
+   *
+   * Filename composition when non-empty conf var 'file_time':
+   * [siteId].[date].json.log
+   *
+   * Filename composition when empty (or 'none') conf var 'file_time':
+   * [siteId].json.log
+   *
+   * @uses JsonLogEvent::getDir()
+   *
+   * @return string
+   *   Empty if getDir() fails.
+   */
+  public function getFile() {
     $file = static::$file;
+    if ($file) {
+      return $file;
+    }
+    $file = $this->getDir();
     if (!$file) {
-      static::$file = $file = $this->file();
+      // No reason to log failure here; getDir() does that.
+      return '';
+    }
+
+    $file .= '/' . $this->siteId(true);
+
+    $fileTime = static::configGet(static::CONFIG_DOMAIN, 'file_time', 'Ymd');
+    if ($fileTime && $fileTime != 'none') {
+      $file .= '.' . date($fileTime);
+    }
+
+    static::$file = $file . '.json.log';
+    return $file;
+  }
+
+  /**
+   * @param string $event
+   *
+   * @return boolean
+   */
+  public function write($event) {
+    $file = $this->getFile();
+    if (!$file) {
+      return false;
     }
 
     // File append, using lock (write, doesn't prevent reading).
     $success = file_put_contents(
       $file,
-      json_encode($this->event, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT),
+      json_encode($event, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . "\n",
       FILE_APPEND | LOCK_EX
     );
     // If failure: log filing error to host's default log.
     if (!$success) {
-      error_log('jsonlog, site ID[' . $siteId . '], failed to write to file[' . $file . '].');
+      error_log('jsonlog, site ID[' . $this->siteId(true) . '], failed to write to file[' . $file . '].');
     }
 
     return $success;
   }
-
-  /**
-   * @throws \Psr\Log\InvalidArgumentException
-   *   Invalid level argument.
-   *
-   * @param mixed $level
-   *   String (word): value as defined by Psr\Log\LogLevel class constants.
-   *   Integer|stringed integer: between zero and seven; RFC 5424.
-   *
-   * @return string
-   *   Equivalent to a Psr\Log\LogLevel class constant.
-   *
-  public static function severity($level) {
-    // Support RFC 5424 integer as well as words defined by PSR-3.
-    $severity = '' . $level;
-    if (ctype_digit($level)) {
-      switch ($severity) {
-        case '' . LOG_EMERG:
-          $severity = LogLevel::EMERGENCY;
-          break;
-        case '' . LOG_ALERT:
-          $severity = LogLevel::ALERT;
-          break;
-        case '' . LOG_CRIT:
-          $severity = LogLevel::CRITICAL;
-          break;
-        case '' . LOG_ERR:
-          $severity = LogLevel::ERROR;
-          break;
-        case '' . LOG_WARNING:
-          $severity = LogLevel::WARNING;
-          break;
-        case '' . LOG_NOTICE:
-          $severity = LogLevel::NOTICE;
-          break;
-        case '' . LOG_INFO:
-          $severity = LogLevel::INFO;
-          break;
-        case '' . LOG_DEBUG:
-          $severity = LogLevel::DEBUG;
-          break;
-        default:
-          throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-      }
-    }
-    else {
-      switch ($severity) {
-        case LogLevel::EMERGENCY;
-        case LogLevel::ALERT;
-        case LogLevel::CRITICAL;
-        case LogLevel::ERROR;
-        case LogLevel::WARNING;
-        case LogLevel::NOTICE;
-        case LogLevel::INFO;
-        case LogLevel::DEBUG;
-          // Level/severity A-OK.
-          break;
-        default:
-          throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-      }
-    }
-
-    return $severity;
-  }*/
 
   /**
    * PSR LogLevel doesn't define numeric values of levels,
@@ -1088,52 +878,6 @@ class JsonLogEvent {
     }
 
     throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-  }
-
-  /**
-   * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
-   * as fallback when conf var 'dir' not set.
-   *
-   * Attempts to save the directory to conf var 'dir'.
-   *
-   * @return string
-   */
-  public static function dir() {
-    $dir = static::configGet(static::CONFIG_DOMAIN, 'dir');
-    if ($dir) {
-      return $dir;
-    }
-
-    // Default web server log dir for common *nix distributions.
-    $defaultLogDirs = array(
-      'debian' => '/var/log/apache2',
-      'redhat' => '/var/log/httpd',
-    );
-
-    $dir = '';
-    $hostLog = ini_get('error_log');
-    if (!$hostLog || $hostLog === 'syslog') {
-      // Try default web server log dirs for common *nix distributions.
-      foreach ($defaultLogDirs as $val) {
-        if (file_exists($val)) {
-          $dir = $val;
-          break;
-        }
-      }
-    }
-    elseif (DIRECTORY_SEPARATOR != '/') {
-      $dir = str_replace('\\', '/', dirname($hostLog));
-    }
-
-    if ($dir) {
-      $dir .= '/jsonlog';
-      // Save it; kind of expensive to establish.
-      static::configSet(static::CONFIG_DOMAIN, 'dir', $dir);
-
-      return $dir;
-    }
-
-    return '';
   }
 
   /**
