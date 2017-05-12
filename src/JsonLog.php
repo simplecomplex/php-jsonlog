@@ -32,6 +32,7 @@ class JsonLog extends AbstractLogger {
    * @return void
    */
   public function log($level, $message, array $context = array()) {
+    // Convert RFC 5424 integer to PSR-3 word.
     $severity = static::severity($level);
 
     $threshold = static::$threshold;
@@ -559,13 +560,13 @@ class JsonLog extends AbstractLogger {
    *
    * @param mixed $level
    *   String (word): value as defined by Psr\Log\LogLevel class constants.
-   *   Integer|stringed integer: between zero and seven.
+   *   Integer|stringed integer: between zero and seven; RFC 5424.
    *
    * @return string
    *   Equivalent to a Psr\Log\LogLevel class constant.
    */
   public static function severity($level) {
-    // Support integer RFC 5424 as well as words defined by PSR-4.
+    // Support RFC 5424 integer as well as words defined by PSR-3.
     $severity = '' . $level;
     if (ctype_digit($level)) {
       switch ($severity) {
