@@ -6,6 +6,9 @@ use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;
 use Psr\Log\InvalidArgumentException;
 
+//$what = new JsonLog(JsonLog::class);
+
+
 /**
  * PSR-3 logger which files events as JSON.
  *
@@ -23,52 +26,41 @@ class JsonLog extends AbstractLogger {
    *
    * @param mixed $level
    *   String (word): value as defined by Psr\Log\LogLevel class constants.
-   *   Integer|stringed integer: between zero and seven.
+   *   Integer|stringed integer: between zero and seven; RFC 5424.
    * @param string $message
    *   Placeholder {word}s must correspond to keys in the context argument.
    * @param array $context
-   *   Contrary to
    *
    * @return void
    */
-  final public function log($level, $message, array $context = array()) {
-    // Convert RFC 5424 integer to PSR-3 word.
-    $severity = static::severity($level);
+  public function log($level, $message, array $context = array()) {
+    /**
+     * @var JsonLogEvent $entry
+     */
+    $entry = new $this->entryClass($level, $message, $context);
 
-    $threshold = static::$threshold;
-    if ($threshold == -1) {
-      static::$threshold = $threshold = static::configGet(static::CONFIG_DOMAIN, 'threshold', static::THRESHOLD_DEFAULT);
+    if ($entry->severe()) {
+      $entryColumns = $entry->get();
     }
-    // More is less.
-    if ($severity > $threshold) {
-      return;
-    }
-
-    $class = '\\SimpleComplex\\JsonLog\\JsonLogSite';
-
-    $system = new $class();
-
-    $this->setEventGenerics();
-    $this->setEventSpecifics($severity, $message, $context);
-
-    $this->write();
-
-    // Pass event to class var, to make generic properties and property sequence
-    // reusable by later log call.
-
-    // Clear message, to save memory.
-    $this->event['message'] = '';
-
-    static::$eventLast = $this->event;
-  }
-
-
-  public function getEntry() {
-
   }
 
 
   // Idiosyncratic properties.
+
+  /**
+   * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
+   *
+   * @var string
+   */
+  protected $eventClass = '';
+
+  /**
+   * @param string $eventClass
+   *   Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
+   */
+  public function __construct($eventClass = JsonLogEvent::class) {
+    $this->eventClass = $eventClass;
+  }
 
   /**
    * Conf var default namespace.
@@ -176,13 +168,34 @@ class JsonLog extends AbstractLogger {
     'trunc' => 'trunc',
   );
 
+  /**
+   * List of site/system columns.
+   *
+   * Key is the property's get method; value is the property's name when logged.
+   * Beware: Fatal error if a method doesn't exist.
+   *
+   *  Overriding class may:
+   *  - list less columns
+   *  - define different values; log column names
+   *  - list more columns; do make sure to declare a get method for each key
+   *
+   * @var array
+   */
   protected static $columnsSite = array(
     'type' => 'type',
+    'host' => 'host',
     'siteId' => 'site_id',
-    'instanceOf' => 'canonical',
+    'canonical' => 'canonical',
     'tags' => 'tags',
   );
 
+  /**
+   * List of request/process columns.
+   *
+   * @see JsonLog::$columnsSite
+   *
+   * @var array
+   */
   protected static $columnsRequest = array(
     'method' => 'method',
     'requestUri' => 'request_uri',
@@ -191,6 +204,13 @@ class JsonLog extends AbstractLogger {
     'userAgent' => 'useragent',
   );
 
+  /**
+   * List of event-specific columns.
+   *
+   * @see JsonLog::$columnsSite
+   *
+   * @var array
+   */
   protected static $columnsEvent = array(
     'message' => 'message',
     'timestamp' => '@timestamp',
@@ -202,7 +222,11 @@ class JsonLog extends AbstractLogger {
     'userName' => 'username',
   );
 
-
+  /**
+   * Lists the sequence of column groups (site, request, event).
+   *
+   * @var array
+   */
   protected static $columnSequence = array(
     'event',
     'request',
@@ -222,6 +246,28 @@ class JsonLog extends AbstractLogger {
    * @var array
    */
   protected static $currentRequest = array();
+
+
+  /**
+   * @var string
+   */
+  protected $level = '';
+
+
+  /**
+   * @var string
+   */
+  protected $severity = LOG_DEBUG;
+
+  /**
+   * @var string
+   */
+  protected $message = '';
+
+  /**
+   * @var array
+   */
+  protected $context = array();
 
   /**
    * @return array
@@ -258,15 +304,43 @@ class JsonLog extends AbstractLogger {
     switch ($sequence[0]) {
       case 'event':
         // Specific - generic.
-        return $sequence[1] == 'request' ? ($event + $request + $site) : ($event + $site + $request);
+        return $sequence[1] == 'request' ? ($event + $request + $site) :
+          ($event + $site + $request);
       case 'site':
         // Generic - specific.
-        return $sequence[1] == 'request' ? ($site + $request + $event) : ($site + $event + $request);
+        return $sequence[1] == 'request' ? ($site + $request + $event) :
+          ($site + $event + $request);
       default:
         // 'request'.
         // Messy sequence.
-        return $sequence[1] == 'event' ? ($request + $event + $site) : ($request + $site + $event);
+        return $sequence[1] == 'event' ? ($request + $event + $site) :
+          ($request + $site + $event);
     }
+  }
+
+
+  // Site column getters.-------------------------------------------------------
+
+  /**
+   * @return string
+   */
+  public function type() {
+    return static::configGet(static::CONFIG_DOMAIN, 'type', static::TYPE_DEFAULT);
+  }
+
+  /**
+   * This implementation uses what potentially is the server name provided
+   * by the client; overriding in sub class is recommended.
+   *
+   * Beware (citing php.net):
+   * Under Apache 2, you must set UseCanonicalName = On and ServerName.
+   * Otherwise, this value reflects the hostname supplied by the client, which
+   * can be spoofed.
+   *
+   * @return string
+   */
+  public function host() {
+    return !empty($_SERVER['SERVER_NAME']) ? static::sanitizeUnicode($_SERVER['SERVER_NAME']) : '';
   }
 
   /**
@@ -280,11 +354,14 @@ class JsonLog extends AbstractLogger {
    * This implementation uses a document root dir name as fallback, if no
    * 'siteid' conf var set.
    *
-   * Attempts to save site ID to conf var 'siteid'.
+   * Attempts to save site ID to conf var 'siteid', unless truthy arg noSave.
+   *
+   * @param boolean $noSave
+   *   Default: false; do save.
    *
    * @return string
    */
-  public function siteId() {
+  public function siteId($noSave = false) {
     $site_id = static::$siteId;
     if (!$site_id) {
       $site_id = static::configGet(static::CONFIG_DOMAIN, 'siteid', null);
@@ -314,12 +391,12 @@ class JsonLog extends AbstractLogger {
             $site_id = $dirs[0];
           }
         }
-        if ($site_id) {
+        if (!$site_id) {
+          $site_id = 'unknown';
+        }
+        elseif (!$noSave) {
           // Save it; kind of expensive to establish.
           static::configSet(static::CONFIG_DOMAIN, 'siteid', $site_id);
-        }
-        else {
-          $site_id = 'unknown';
         }
       }
       static::$siteId = $site_id;
@@ -328,28 +405,131 @@ class JsonLog extends AbstractLogger {
     return $site_id;
   }
 
+  /**
+   * Site identifier across multiple instances.
+   *
+   * @return string
+   */
+  public function canonical() {
+    return static::configGet(static::CONFIG_DOMAIN, 'canonical', '');
+  }
+
+  /**
+   * @return string
+   */
+  public function tags() {
+    $tags = static::configGet(static::CONFIG_DOMAIN, 'tags');
+
+    return !$tags ? '' : (is_array($tags) ? join(',', $tags) : ('' . $tags));
+  }
+
+
+  // Request column getters.----------------------------------------------------
+
+  /**
+   * HTTP request method (uppercase), or 'cli' (lowercase).
+   *
+   * @return string
+   */
+  public function method() {
+    return !empty($_SERVER['REQUEST_METHOD']) ? preg_replace('/[^A-Z]/', '', $_SERVER['REQUEST_METHOD']) : 'cli';
+  }
+
+  /**
+   * In cli mode: the line executed.
+   *
+   * @return string
+   */
+  public function requestUri() {
+    if (isset($_SERVER['REQUEST_URI'])) {
+      return static::sanitizeUnicode($_SERVER['REQUEST_URI']);
+    }
+    if (PHP_SAPI == 'cli' && isset($_SERVER['argv'])) {
+      return join(' ', $_SERVER['argv']);
+    }
+    return '/';
+  }
+
+  /**
+   * @return string
+   */
+  public function referer() {
+    return !empty($_SERVER['HTTP_REFERER']) ? static::sanitizeUnicode($_SERVER['HTTP_REFERER']) : '';
+  }
+
+  /**
+   * Excludes proxy addresses if configured accordingly.
+   *
+   *  Conf vars used:
+   *  - reverse_proxy_addresses: comma-separated list of proxy IPd
+   *  - reverse_proxy_header: default HTTP_X_FORWARDED_FOR
+   *
+   * @return string
+   */
+  public function clientIp() {
+    $client_ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+    if ($client_ip) {
+      // Get list of configured trusted proxy IPs.
+      $proxy_ips = static::configGet(static::CONFIG_DOMAIN, 'reverse_proxy_addresses');
+      if ($proxy_ips) {
+        // Get 'forwarded for' header, ideally listing
+        // 'client, proxy-1, proxy-2, ...'.
+        $proxy_header = static::configGet(static::CONFIG_DOMAIN, 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR');
+        if ($proxy_header && !empty($_SERVER[$proxy_header])) {
+          $ips = str_replace(' ', '', static::sanitizeAscii($_SERVER[$proxy_header]));
+          if ($ips) {
+            $ips = explode(',', $ips);
+            // Append direct client IP, in case it is missing in the
+            // 'forwarded for' header.
+            $ips[] = $client_ip;
+            // Remove trusted proxy IPs.
+            $netIps = array_diff($ips, $proxy_ips);
+            if ($netIps) {
+              // The right-most is the most specific.
+              $client_ip = end($netIps);
+            }
+            else {
+              // The 'forwarded for' header contained known proxy IPs only;
+              // use the first of them
+              $client_ip = reset($ips);
+            }
+          }
+        }
+      }
+    }
+
+    return $client_ip && $client_ip != filter_var($client_ip, FILTER_VALIDATE_IP) ? $client_ip : '';
+  }
+
+  /**
+   * Truncate HTTP useragent.
+   *
+   * @var integer
+   */
+  const USER_AGENT_TRUNCATE = 100;
+
+  /**
+   * @return string
+   */
+  public function userAgent() {
+    return !empty($_SERVER['HTTP_USER_AGENT']) ?
+      static::sanitizeUnicode(static::multiByteSubString($_SERVER['HTTP_USER_AGENT'], 0, static::USER_AGENT_TRUNCATE)) : '';
+  }
+
+
+  // Event column getters.------------------------------------------------------
+
+  protected static $truncate = 64;
 
   /**
   'message' => 'message',
   'timestamp' => '@timestamp',
-  'version' => '@version',
-  'message_id' => 'message_id',
-  'site_id' => 'site_id',
-  'canonical' => 'canonical',
-  'tags' => 'tags',
-  'type' => 'type',
-  'subtype' => 'subtype',
+  'eventId' => 'message_id',
+  'subType' => 'subtype',
   'severity' => 'severity',
-  'method' => 'method',
-  'request_uri' => 'request_uri',
-  'referer' => 'referer',
-  'username' => 'username',
-  'client_ip' => 'client_ip',
-  'useragent' => 'useragent',
   'code' => 'code',
-  'trunc' => 'trunc',
-   *
-   *
+  'truncaction' => 'trunc',
+  'userName' => 'username',
    */
 
   /**
@@ -372,11 +552,6 @@ class JsonLog extends AbstractLogger {
    * @var integer
    */
   protected static $eventTruncate = 64;
-
-  /**
-   * @var string
-   */
-  protected static $siteId = '';
 
   /**
    * @var string
@@ -749,7 +924,7 @@ class JsonLog extends AbstractLogger {
    *
    * @return string
    *   Equivalent to a Psr\Log\LogLevel class constant.
-   */
+   *
   public static function severity($level) {
     // Support RFC 5424 integer as well as words defined by PSR-3.
     $severity = '' . $level;
@@ -801,6 +976,83 @@ class JsonLog extends AbstractLogger {
     }
 
     return $severity;
+  }*/
+
+  /**
+   * PSR LogLevel doesn't define numeric values of levels,
+   * but RFC 5424 'emergency' is 0 and 'debug' is 7.
+   *
+   * @see \Psr\Log\LogLevel
+   *
+   * @var array
+   */
+  protected static $levelBySeverity = array(
+    LogLevel::EMERGENCY,
+    LogLevel::ALERT,
+    LogLevel::CRITICAL,
+    LogLevel::ERROR,
+    LogLevel::WARNING,
+    LogLevel::NOTICE,
+    LogLevel::INFO,
+    LogLevel::DEBUG,
+  );
+
+  /**
+   * @throws \Psr\Log\InvalidArgumentException
+   *   Invalid level argument.
+   *
+   * @param mixed $level
+   *   String (word): value as defined by Psr\Log\LogLevel class constants.
+   *   Integer|stringed integer: between zero and seven; RFC 5424.
+   *
+   * @return string
+   *   Equivalent to a Psr\Log\LogLevel class constant.
+   */
+  protected static function levelToString($level) {
+    // Support RFC 5424 integer as well as words defined by PSR-3.
+    $lvl = '' . $level;
+
+    // RFC 5424 integer.
+    if (ctype_digit($lvl)) {
+      if ($lvl >= 0 && $lvl < count(self::$levelBySeverity)) {
+        return self::$levelBySeverity[$lvl];
+      }
+    }
+    // Word defined by PSR-3.
+    elseif (in_array($lvl, self::$levelBySeverity)) {
+      return $lvl;
+    }
+
+    throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
+  }
+
+  /**
+   * @throws \Psr\Log\InvalidArgumentException
+   *   Invalid level argument.
+   *
+   * @param mixed $level
+   *   String (word): value as defined by Psr\Log\LogLevel class constants.
+   *   Integer|stringed integer: between zero and seven; RFC 5424.
+   *
+   * @return integer
+   */
+  protected static function levelToInteger($level) {
+    // Support RFC 5424 integer as well as words defined by PSR-3.
+    $lvl = '' . $level;
+
+    if (ctype_digit($lvl)) {
+      if ($lvl >= 0 && $lvl < count(self::$levelBySeverity)) {
+        return (int) $lvl;
+      }
+    }
+    else {
+      $index = array_search($lvl, self::$levelBySeverity);
+      if ($index !== false) {
+        return $index;
+      }
+    }
+
+    throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
   }
 
   /**
@@ -893,6 +1145,10 @@ class JsonLog extends AbstractLogger {
   protected static function configSet($domain, $name, $value) {
     //$key = ($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name;
   }
+
+
+  // String manipulators.-------------------------------------------------------
+  // @todo: Move string string manipulators to separate library.
 
   /**
    * @param string $str

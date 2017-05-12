@@ -1,0 +1,7 @@
+<?php
+
+//var_dump($argv);
+//echo "\n";
+//var_dump(getopt());
+
+echo join(' ', $_SERVER['argv']) .  "\n";

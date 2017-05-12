@@ -1,3 +1,8 @@
+jsonlog 1.x, 2017-05-12
+-----------------------
+- Removed '@version' property; seems to be something only logstash uses or sets.
+- Added 'host' property.
+
 jsonlog 1.x, 2017-05-07
 -----------------------
 - Vs. Drupal 7 jsonlog: -uid, +useragent; canonical, tags not set when empty.
