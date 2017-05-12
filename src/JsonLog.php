@@ -31,7 +31,7 @@ class JsonLog extends AbstractLogger {
    *
    * @return void
    */
-  public function log($level, $message, array $context = array()) {
+  final public function log($level, $message, array $context = array()) {
     // Convert RFC 5424 integer to PSR-3 word.
     $severity = static::severity($level);
 
@@ -43,6 +43,10 @@ class JsonLog extends AbstractLogger {
     if ($severity > $threshold) {
       return;
     }
+
+    $class = '\\SimpleComplex\\JsonLog\\JsonLogSite';
+
+    $system = new $class();
 
     $this->setEventGenerics();
     $this->setEventSpecifics($severity, $message, $context);
@@ -56,6 +60,11 @@ class JsonLog extends AbstractLogger {
     $this->event['message'] = '';
 
     static::$eventLast = $this->event;
+  }
+
+
+  public function getEntry() {
+
   }
 
 
@@ -166,6 +175,182 @@ class JsonLog extends AbstractLogger {
     'code' => 'code',
     'trunc' => 'trunc',
   );
+
+  protected static $columnsSite = array(
+    'type' => 'type',
+    'siteId' => 'site_id',
+    'instanceOf' => 'canonical',
+    'tags' => 'tags',
+  );
+
+  protected static $columnsRequest = array(
+    'method' => 'method',
+    'requestUri' => 'request_uri',
+    'referer' => 'referer',
+    'clientIp' => 'client_ip',
+    'userAgent' => 'useragent',
+  );
+
+  protected static $columnsEvent = array(
+    'message' => 'message',
+    'timestamp' => '@timestamp',
+    'eventId' => 'message_id',
+    'subType' => 'subtype',
+    'severity' => 'severity',
+    'code' => 'code',
+    'truncaction' => 'trunc',
+    'userName' => 'username',
+  );
+
+
+  protected static $columnSequence = array(
+    'event',
+    'request',
+    'site',
+  );
+
+  /**
+   * Site columns are reusable across individual entries of a request.
+   *
+   * @var array
+   */
+  protected static $currentSite = array();
+
+  /**
+   * Request columns are reusable across individual entries of a request.
+   *
+   * @var array
+   */
+  protected static $currentRequest = array();
+
+  /**
+   * @return array
+   */
+  protected function createEntry() {
+    $site = static::$currentSite;
+    if (!$site) {
+      $columns =& static::$columnsSite;
+      foreach ($columns as $method => $name) {
+        $site[$name] = $this->{$method}();
+      }
+      unset($columns);
+      static::$currentSite =& $site;
+    }
+
+    $request = static::$currentRequest;
+    if (!$request) {
+      $columns =& static::$columnsRequest;
+      foreach ($columns as $method => $name) {
+        $request[$name] = $this->{$method}();
+      }
+      unset($columns);
+      static::$currentRequest =& $request;
+    }
+
+    $event = array();
+    $columns =& static::$columnsEvent;
+    foreach ($columns as $method => $name) {
+      $event[$name] = $this->{$method}();
+    }
+    unset($columns);
+
+    $sequence = static::$columnSequence;
+    switch ($sequence[0]) {
+      case 'event':
+        // Specific - generic.
+        return $sequence[1] == 'request' ? ($event + $request + $site) : ($event + $site + $request);
+      case 'site':
+        // Generic - specific.
+        return $sequence[1] == 'request' ? ($site + $request + $event) : ($site + $event + $request);
+      default:
+        // 'request'.
+        // Messy sequence.
+        return $sequence[1] == 'event' ? ($request + $event + $site) : ($request + $site + $event);
+    }
+  }
+
+  /**
+   * Record siteId, because may be used many times; even during each entry.
+   *
+   * @var string
+   */
+  protected static $siteId = '';
+
+  /**
+   * This implementation uses a document root dir name as fallback, if no
+   * 'siteid' conf var set.
+   *
+   * Attempts to save site ID to conf var 'siteid'.
+   *
+   * @return string
+   */
+  public function siteId() {
+    $site_id = static::$siteId;
+    if (!$site_id) {
+      $site_id = static::configGet(static::CONFIG_DOMAIN, 'siteid', null);
+      if (!$site_id) {
+        // If no site ID defined: use name of last dir in document root;
+        // except if last dir name is useless, then second to last.
+        $dirs = explode('/', trim(getcwd(), '/'));
+        $le = count($dirs);
+        if ($le) {
+          if ($le > 1) {
+            // Try right-most dir.
+            $site_id = array_pop($dirs);
+            switch ($site_id) {
+              case 'www':
+              case 'http':
+              case 'html':
+                // Use second-to-last, if any.
+                if (count($dirs)) {
+                  $site_id = array_pop($dirs);
+                }
+                break;
+              default:
+                // Keep.
+            }
+          }
+          else {
+            $site_id = $dirs[0];
+          }
+        }
+        if ($site_id) {
+          // Save it; kind of expensive to establish.
+          static::configSet(static::CONFIG_DOMAIN, 'siteid', $site_id);
+        }
+        else {
+          $site_id = 'unknown';
+        }
+      }
+      static::$siteId = $site_id;
+    }
+
+    return $site_id;
+  }
+
+
+  /**
+  'message' => 'message',
+  'timestamp' => '@timestamp',
+  'version' => '@version',
+  'message_id' => 'message_id',
+  'site_id' => 'site_id',
+  'canonical' => 'canonical',
+  'tags' => 'tags',
+  'type' => 'type',
+  'subtype' => 'subtype',
+  'severity' => 'severity',
+  'method' => 'method',
+  'request_uri' => 'request_uri',
+  'referer' => 'referer',
+  'username' => 'username',
+  'client_ip' => 'client_ip',
+  'useragent' => 'useragent',
+  'code' => 'code',
+  'trunc' => 'trunc',
+   *
+   *
+   */
 
   /**
    * On later log calls, event generics are reused by reusing last event
@@ -616,55 +801,6 @@ class JsonLog extends AbstractLogger {
     }
 
     return $severity;
-  }
-
-  /**
-   * This implementation uses a document root dir name as fallback, if no
-   * 'siteid' conf var set.
-   *
-   * Attempts to save site ID to conf var 'siteid'.
-   *
-   * @return string
-   */
-  public static function siteId() {
-    $siteId = static::configGet(static::CONFIG_DOMAIN, 'siteid', null);
-
-    // If no site ID defined: use name of last dir in document root;
-    // except if last dir name is useless, then second to last.
-    if (!$siteId) {
-      $dirs = explode('/', trim(getcwd(), '/'));
-      $le = count($dirs);
-      if ($le) {
-        if ($le > 1) {
-          // Try right-most dir.
-          $siteId = array_pop($dirs);
-          switch ($siteId) {
-            case 'www':
-            case 'http':
-            case 'html':
-              // Use second-to-last, if any.
-              if (count($dirs)) {
-                $siteId = array_pop($dirs);
-              }
-              break;
-            default:
-              // Keep.
-          }
-        }
-        else {
-          $siteId = $dirs[0];
-        }
-      }
-      if ($siteId) {
-        // Save it; kind of expensive to establish.
-        static::configSet(static::CONFIG_DOMAIN, 'siteid', $siteId);
-      }
-      else {
-        $siteId = 'unknown';
-      }
-    }
-
-    return $siteId;
   }
 
   /**
