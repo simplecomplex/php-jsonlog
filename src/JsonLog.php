@@ -42,8 +42,11 @@ class JsonLog extends AbstractLogger {
      */
     $event = new $this->eventClass($level, $message, $context);
 
+    echo constant($this->eventClass . '::THRESHOLD_DEFAULT') . "\n";
+
+
     if ($event->severe()) {
-      $event->write(
+      $event->submit(
         $event->get()
       );
     }

@@ -1,7 +1,39 @@
 <?php
 
+
+require '../../autoload.php';
+
 //var_dump($argv);
 //echo "\n";
 //var_dump(getopt());
+/*
+echo join(' ', $_SERVER['argv']) . "\n\n";
 
-echo join(' ', $_SERVER['argv']) .  "\n";
+echo (int) class_exists('\\SimpleComplex\\Inspect\\Inspect');
+*/
+
+$mode = fileperms(dirname(__FILE__));
+
+echo $mode;
+
+echo "\n";
+
+echo (int) mkdir(dirname(__FILE__) . '/hej/dig', $mode, true);
+
+echo "\n";
+
+exit;
+
+use SimpleComplex\JsonLog\JsonLog;
+
+ini_set('error_log', "/www/00_simplecomplex/sites/php-psr.source/log/php_error.log");
+
+
+$logger = new JsonLog();
+
+
+$logger->log(4, 'hej');
+
+
+
+echo "\n";

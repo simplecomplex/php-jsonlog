@@ -697,7 +697,7 @@ class JsonLogEvent {
    * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
    * as fallback when conf var 'dir' not set.
    *
-   * Attempts to log to error_log if failing to establish dir.
+   * Attempts to log to error_log if failing to determine dir.
    *
    * @param boolean $noSave
    *
@@ -719,8 +719,11 @@ class JsonLogEvent {
         }
       }
     }
-    elseif (DIRECTORY_SEPARATOR != '/') {
-      $dir = str_replace('\\', '/', dirname($host_log));
+    else {
+      $dir = dirname($host_log);
+      if (DIRECTORY_SEPARATOR == '\\') {
+        $dir = str_replace('\\', '/', dirname($dir));
+      }
     }
 
     if ($dir) {
@@ -732,7 +735,7 @@ class JsonLogEvent {
       return $dir;
     }
 
-    error_log('jsonlog, site ID[' . $this->siteId(true) . '], cannot establish log dir.');
+    error_log('jsonlog, site ID[' . $this->siteId(true) . '], cannot determine log dir.');
 
     return '';
   }
@@ -741,6 +744,8 @@ class JsonLogEvent {
    * @var string
    */
   protected static $file = '';
+
+  // @todo: rename 'dir' to 'path'.
 
   /**
    * Get path and filename.
@@ -773,8 +778,9 @@ class JsonLogEvent {
     if ($fileTime && $fileTime != 'none') {
       $file .= '.' . date($fileTime);
     }
+    $file .= '.json.log';
 
-    static::$file = $file . '.json.log';
+    static::$file = $file;
     return $file;
   }
 
@@ -783,7 +789,7 @@ class JsonLogEvent {
    *
    * @return boolean
    */
-  public function write($event) {
+  public function submit($event) {
     $file = $this->getFile();
     if (!$file) {
       return false;
@@ -801,6 +807,117 @@ class JsonLogEvent {
     }
 
     return $success;
+  }
+
+  /**
+   *
+   * May set access and modification time of file, which may confuse
+   * a collection (logstash et al.).
+   *
+   * @param boolean $enable
+   *   Truthy: attempt to make submittable if not.
+   * @param boolean $getResponse
+   *   Truthy: return [ success: bool, message: str, code: int ], not boolean.
+   *
+   * @return boolean|array
+   */
+  public function ensureSubmittable($enable = false, $getResponse = false) {
+    $success = false;
+    $msgs = array();
+    $error_code = 0;
+
+    $dir = $this->getDir();
+    if (!$dir) {
+      $msgs = 'Cannot determine dir.';
+    }
+    elseif (!file_exists($dir)) {
+      if (!$enable) {
+        $error_code = 10;
+        $msgs[] = 'Path does not exist.';
+      }
+      else {
+        // Get file mode of first dir that exists.
+        $mode = 11;
+        $limit = 10;
+        while ((--$limit) && ($ancestor_path = dirname($dir))) {
+          if (file_exists($ancestor_path)) {
+            if (!is_dir($ancestor_path)) {
+              $error_code = 11;
+              $msgs[] = 'A fragment of path is not a directory.';
+            }
+            else {
+              $mode = fileperms($ancestor_path);
+            }
+          }
+          break;
+        }
+        if (!$error_code) {
+          if (!$mode) {
+            $error_code = 12;
+            $msgs[] = 'Cannot determine file mode.';
+          }
+          else {
+            $make = mkdir($dir, $mode, true);
+            if (!$make) {
+              $error_code = 13;
+              $msgs[] = 'Failed to create path.';
+            }
+            else {
+              $msgs[] = 'Created path.';
+            }
+          }
+        }
+      }
+    }
+    elseif (!is_dir($dir)) {
+      $error_code = 20;
+      $msgs[] = 'Path is not a directory.';
+    }
+
+    if (!$error_code) {
+      if (!is_writable($dir)) {
+        $error_code = 30;
+        $msgs[] = 'Path is not writable.';
+      }
+      elseif (!is_readable($dir)) {
+        $error_code = 40;
+        $msgs[] = 'Path is not readable, may not be a problem.';
+      }
+      else {
+        $msgs[] = 'Path is writable.';
+        $file = $this->getFile();
+        if (file_exists($file)) {
+          if (!is_file($file)) {
+            $error_code = 50;
+            $msgs[] = 'File is not a file.';
+          }
+          elseif (!is_writable($file) || !touch($file)) {
+            $error_code = 60;
+            $msgs[] = 'File is not writable.';
+          }
+          else {
+            $success = true;
+          }
+        }
+        else {
+          $make = touch($file);
+          if (!$make) {
+            $error_code = 70;
+            $msgs[] = 'Failed to create file.';
+          }
+          else {
+            $success = true;
+            $msgs[] = 'Created the file.';
+          }
+        }
+      }
+    }
+
+    return !$getResponse ? $success : array(
+      'success' => $success,
+      'message' => join(' ', $msgs),
+      'code' => $error_code,
+    );
   }
 
   /**
