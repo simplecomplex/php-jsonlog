@@ -821,6 +821,13 @@ class JsonLogEvent {
    * May set access and modification time of file, which may confuse
    * a collection (logstash et al.).
    *
+   * Will attempt to create log path, if truthy arg enable and the path doesn't
+   * exist.
+   * When creating missing dirs in the path, the file mode of the right-most
+   * existing dir will be used. However mode may well become wrong (seen failing
+   * group-write).
+   *
+   *
    * @param boolean $enable
    *   Truthy: attempt to make committable if not.
    * @param boolean $getResponse
