@@ -8,8 +8,6 @@ use Psr\Log\AbstractLogger;
 /**
  * PSR-3 logger which files events as JSON.
  *
- * Preferably do extend JsonLogEvent, not JsonLog itself.
- *
  * @see \SimpleComplex\JsonLog\JsonLogEvent
  *
  * @package SimpleComplex\JsonLog
@@ -37,16 +35,14 @@ class JsonLog extends AbstractLogger {
    * @return void
    */
   public function log($level, $message, array $context = array()) {
+    $event_class = static::CLASS_JSON_LOG_EVENT;
     /**
      * @var JsonLogEvent $event
      */
-    $event = new $this->eventClass($level, $message, $context);
-
-    echo constant($this->eventClass . '::THRESHOLD_DEFAULT') . "\n";
-
+    $event = new $event_class($level, $message, $context);
 
     if ($event->severe()) {
-      $event->submit(
+      $event->commit(
         $event->get()
       );
     }
@@ -58,19 +54,32 @@ class JsonLog extends AbstractLogger {
   /**
    * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
    *
+   * @code
+   * // Overriding class must use fully qualified (namespaced) class name.
+   * const CLASS_JSON_LOG_EVENT = \Package\Library\CustomJsonLogEvent::class;
+   * @endcode
+   *
+   * @see \SimpleComplex\JsonLog\JsonLogEvent
+   *
    * @var string
    */
-  protected $eventClass = '';
+  const CLASS_JSON_LOG_EVENT = JsonLogEvent::class;
 
   /**
-   * Dependency injection by class instead of instance, because it doesn't
-   * make sense to instantiate a (single) log event prior to logging anything
-   * at all.
+   * @see \SimpleComplex\JsonLog\JsonLogEvent::committable()
    *
-   * @param string $eventClass
-   *   Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
+   * @param bool $enable
+   * @param bool $getResponse
+   *
+   * @return boolean|array
    */
-  public function __construct($eventClass = JsonLogEvent::class) {
-    $this->eventClass = $eventClass;
+  public function committable($enable = false, $getResponse = false) {
+    $event_class = static::CLASS_JSON_LOG_EVENT;
+    /**
+     * @var JsonLogEvent $event
+     */
+    $event = new $event_class(LOG_DEBUG, 'Committable?');
+
+    return $event->committable($enable, $getResponse);
   }
 }

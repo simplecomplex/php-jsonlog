@@ -8,9 +8,6 @@ use Psr\Log\InvalidArgumentException;
 /**
  * JsonLog event.
  *
- * Extend this class instead of JsonLog self, and then use JsonLog constructor's
- * class dependency injection.
- *
  * @package SimpleComplex\JsonLog
  */
 class JsonLogEvent {
@@ -227,12 +224,8 @@ class JsonLogEvent {
    * @return boolean
    */
   public function severe() {
-    $threshold = static::$threshold;
-    if ($threshold == -1) {
-      static::$threshold = $threshold = static::configGet(static::CONFIG_DOMAIN, 'threshold', static::THRESHOLD_DEFAULT);
-    }
     // Less is more.
-    return $this->severity <= $threshold;
+    return $this->severity <= static::getThreshold();
   }
 
   /**
@@ -321,8 +314,8 @@ class JsonLogEvent {
   protected static $siteId = '';
 
   /**
-   * This implementation uses a document root dir name as fallback, if no
-   * 'siteid' conf var set.
+   * This implementation uses document root dir (rather executed script's
+   * parent dir) name as fallback, if no 'siteid' conf var set.
    *
    * Attempts to save site ID to conf var 'siteid', unless truthy arg noSave.
    *
@@ -345,9 +338,10 @@ class JsonLogEvent {
             // Try right-most dir.
             $site_id = array_pop($dirs);
             switch ($site_id) {
-              case 'www':
               case 'http':
               case 'html':
+              case 'public_html':
+              case 'www':
                 // Use second-to-last, if any.
                 if (count($dirs)) {
                   $site_id = array_pop($dirs);
@@ -680,6 +674,20 @@ class JsonLogEvent {
   // Non-column methods and helpers.--------------------------------------------
 
   /**
+   * @param boolean $asString
+   *
+   * @return integer|string
+   */
+  public function getThreshold($asString = false) {
+    $threshold = static::$threshold;
+    if ($threshold == -1) {
+      static::$threshold = $threshold = static::configGet(static::CONFIG_DOMAIN, 'threshold', static::THRESHOLD_DEFAULT);
+    }
+
+    return !$asString ? $threshold : static::levelToString($threshold);
+  }
+
+  /**
    * Default webserver log dirs of major *nix distros.
    *
    * @var array
@@ -695,7 +703,7 @@ class JsonLogEvent {
 
   /**
    * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
-   * as fallback when conf var 'dir' not set.
+   * as fallback when conf var 'path' not set.
    *
    * Attempts to log to error_log if failing to determine dir.
    *
@@ -703,10 +711,10 @@ class JsonLogEvent {
    *
    * @return string
    */
-  public function getDir($noSave = false) {
-    $dir = static::configGet(static::CONFIG_DOMAIN, 'dir', '');
-    if ($dir) {
-      return $dir;
+  public function getPath($noSave = false) {
+    $path = static::configGet(static::CONFIG_DOMAIN, 'path', '');
+    if ($path) {
+      return $path;
     }
 
     $host_log = ini_get('error_log');
@@ -714,25 +722,25 @@ class JsonLogEvent {
       // Try default web server log dirs for common *nix distributions.
       foreach (static::$logDirDefaults as $val) {
         if (file_exists($val)) {
-          $dir = $val;
+          $path = $val;
           break;
         }
       }
     }
     else {
-      $dir = dirname($host_log);
+      $path = dirname($host_log);
       if (DIRECTORY_SEPARATOR == '\\') {
-        $dir = str_replace('\\', '/', dirname($dir));
+        $path = str_replace('\\', '/', dirname($path));
       }
     }
 
-    if ($dir) {
-      $dir .= '/jsonlog';
+    if ($path) {
+      $path .= '/jsonlog';
 
       if (!$noSave) {
-        static::configSet(static::CONFIG_DOMAIN, 'dir', $dir);
+        static::configSet(static::CONFIG_DOMAIN, 'path', $path);
       }
-      return $dir;
+      return $path;
     }
 
     error_log('jsonlog, site ID[' . $this->siteId(true) . '], cannot determine log dir.');
@@ -745,8 +753,6 @@ class JsonLogEvent {
    */
   protected static $file = '';
 
-  // @todo: rename 'dir' to 'path'.
-
   /**
    * Get path and filename.
    *
@@ -756,19 +762,19 @@ class JsonLogEvent {
    * Filename composition when empty (or 'none') conf var 'file_time':
    * [siteId].json.log
    *
-   * @uses JsonLogEvent::getDir()
+   * @uses JsonLogEvent::getPath()
    *
    * @return string
-   *   Empty if getDir() fails.
+   *   Empty if getPath() fails.
    */
   public function getFile() {
     $file = static::$file;
     if ($file) {
       return $file;
     }
-    $file = $this->getDir();
+    $file = $this->getPath();
     if (!$file) {
-      // No reason to log failure here; getDir() does that.
+      // No reason to log failure here; getPath() does that.
       return '';
     }
 
@@ -785,11 +791,13 @@ class JsonLogEvent {
   }
 
   /**
+   * Write event to file.
+   *
    * @param string $event
    *
    * @return boolean
    */
-  public function submit($event) {
+  public function commit($event) {
     $file = $this->getFile();
     if (!$file) {
       return false;
@@ -810,27 +818,26 @@ class JsonLogEvent {
   }
 
   /**
-   *
    * May set access and modification time of file, which may confuse
    * a collection (logstash et al.).
    *
    * @param boolean $enable
-   *   Truthy: attempt to make submittable if not.
+   *   Truthy: attempt to make committable if not.
    * @param boolean $getResponse
    *   Truthy: return [ success: bool, message: str, code: int ], not boolean.
    *
    * @return boolean|array
    */
-  public function ensureSubmittable($enable = false, $getResponse = false) {
+  public function committable($enable = false, $getResponse = false) {
     $success = false;
     $msgs = array();
     $error_code = 0;
 
-    $dir = $this->getDir();
-    if (!$dir) {
-      $msgs = 'Cannot determine dir.';
+    $path = $this->getPath();
+    if (!$path) {
+      $msgs = 'Cannot determine path.';
     }
-    elseif (!file_exists($dir)) {
+    elseif (!file_exists($path)) {
       if (!$enable) {
         $error_code = 10;
         $msgs[] = 'Path does not exist.';
@@ -839,7 +846,8 @@ class JsonLogEvent {
         // Get file mode of first dir that exists.
         $mode = 11;
         $limit = 10;
-        while ((--$limit) && ($ancestor_path = dirname($dir))) {
+        $ancestor_path = $path;
+        while ((--$limit) && ($ancestor_path = dirname($ancestor_path))) {
           if (file_exists($ancestor_path)) {
             if (!is_dir($ancestor_path)) {
               $error_code = 11;
@@ -848,8 +856,8 @@ class JsonLogEvent {
             else {
               $mode = fileperms($ancestor_path);
             }
+            break;
           }
-          break;
         }
         if (!$error_code) {
           if (!$mode) {
@@ -857,7 +865,7 @@ class JsonLogEvent {
             $msgs[] = 'Cannot determine file mode.';
           }
           else {
-            $make = mkdir($dir, $mode, true);
+            $make = mkdir($path, $mode, true);
             if (!$make) {
               $error_code = 13;
               $msgs[] = 'Failed to create path.';
@@ -869,17 +877,17 @@ class JsonLogEvent {
         }
       }
     }
-    elseif (!is_dir($dir)) {
+    elseif (!is_dir($path)) {
       $error_code = 20;
       $msgs[] = 'Path is not a directory.';
     }
 
     if (!$error_code) {
-      if (!is_writable($dir)) {
+      if (!is_writable($path)) {
         $error_code = 30;
         $msgs[] = 'Path is not writable.';
       }
-      elseif (!is_readable($dir)) {
+      elseif (!is_readable($path)) {
         $error_code = 40;
         $msgs[] = 'Path is not readable, may not be a problem.';
       }
@@ -1005,7 +1013,7 @@ class JsonLogEvent {
    *  - (int) truncate
    *  - (str) siteid
    *  - (str) type
-   *  - (str) dir
+   *  - (str) path
    *  - (str) file_time: date() pattern
    *  - (str) canonical
    *  - (str) tags: comma-separated list

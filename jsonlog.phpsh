@@ -1,7 +1,9 @@
 <?php
 
-
 require '../../autoload.php';
+
+
+use \SimpleComplex\JsonLog\JsonLog;
 
 //var_dump($argv);
 //echo "\n";
@@ -12,6 +14,24 @@ echo join(' ', $_SERVER['argv']) . "\n\n";
 echo (int) class_exists('\\SimpleComplex\\Inspect\\Inspect');
 */
 
+if (empty($_SERVER['argv']))
+
+
+
+
+ini_set('error_log', "/www/00_simplecomplex/sites/php-psr.source/log/whatever/notever/php_error.log");
+
+$logger = new JsonLog();
+
+
+$committable = $logger->committable(true, true);
+
+var_dump($committable);
+
+echo "\n";
+exit;
+
+
 $mode = fileperms(dirname(__FILE__));
 
 echo $mode;
@@ -21,10 +41,9 @@ echo "\n";
 echo (int) mkdir(dirname(__FILE__) . '/hej/dig', $mode, true);
 
 echo "\n";
-
 exit;
 
-use SimpleComplex\JsonLog\JsonLog;
+
 
 ini_set('error_log', "/www/00_simplecomplex/sites/php-psr.source/log/php_error.log");
 

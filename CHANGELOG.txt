@@ -1,3 +1,12 @@
+jsonlog 1.x, 2017-05-13
+-----------------------
+- JsonLog's JsonLogEvent class name is now defined as class constant instead
+  constructor parameter.
+- Conf var 'path' renamed; from 'dir'.
+- New method committable().
+- JsonLog's JsonLogEvent class name is now defined as class constant instead
+  constructor parameter.
+
 jsonlog 1.x, 2017-05-12
 -----------------------
 - Most of the logic moved to event class, to be dependency injected via
