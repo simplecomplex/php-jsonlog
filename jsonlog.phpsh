@@ -2,7 +2,13 @@
 
 require '../../autoload.php';
 
+use \SimpleComplex\Cli\Cli;
 
+$cli = new Cli();
+
+$cli->documentRootFind();
+
+/*
 use \SimpleComplex\JsonLog\JsonLog;
 
 //$argv $_SERVER['argv'];
@@ -20,3 +26,4 @@ $logger->log(4, 'Does it {work}? Code is {code}.', array('work' => 'actually wor
 
 echo "\n";
 exit;
+*/
