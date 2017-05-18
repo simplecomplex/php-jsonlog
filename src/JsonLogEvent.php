@@ -827,18 +827,18 @@ class JsonLogEvent {
    * existing dir will be used. However mode may well become wrong (seen failing
    * group-write).
    *
-   *
    * @param boolean $enable
    *   Truthy: attempt to make committable if not.
    * @param boolean $getResponse
    *   Truthy: return [ success: bool, message: str, code: int ], not boolean.
+   *   In CLI mode message contains explicit path or path+file.
    *
    * @return boolean|array
    */
   public function committable($enable = false, $getResponse = false) {
     $success = false;
     $msgs = array();
-    $error_code = 0;
+    $code = 0;
 
     $path = $this->getPath();
     if (!$path) {
@@ -846,8 +846,9 @@ class JsonLogEvent {
     }
     elseif (!file_exists($path)) {
       if (!$enable) {
-        $error_code = 10;
-        $msgs[] = 'Path does not exist.';
+        $code = 10;
+        $msgs[] = 'Path does not exist'
+          . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
       }
       else {
         // Get file mode of first dir that exists.
@@ -857,8 +858,9 @@ class JsonLogEvent {
         while ((--$limit) && ($ancestor_path = dirname($ancestor_path))) {
           if (file_exists($ancestor_path)) {
             if (!is_dir($ancestor_path)) {
-              $error_code = 11;
-              $msgs[] = 'A fragment of path is not a directory.';
+              $code = 11;
+              $msgs[] = 'A fragment of path is not a directory'
+                . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
             }
             else {
               $mode = fileperms($ancestor_path);
@@ -866,49 +868,57 @@ class JsonLogEvent {
             break;
           }
         }
-        if (!$error_code) {
+        if (!$code) {
           if (!$mode) {
-            $error_code = 12;
-            $msgs[] = 'Cannot determine file mode.';
+            $code = 12;
+            $msgs[] = 'Cannot determine file mode'
+              . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
           }
           else {
             $make = mkdir($path, $mode, true);
             if (!$make) {
-              $error_code = 13;
-              $msgs[] = 'Failed to create path.';
+              $code = 13;
+              $msgs[] = 'Failed to create path'
+                . (PHP_SAPI != 'cli' ? '' : ('[' . $path . ']')) . '.';
             }
             else {
-              $msgs[] = 'Created path.';
+              $msgs[] = 'Created path'
+                . (PHP_SAPI != 'cli' ? '' : ('[' . $path . ']')) . '.';
             }
           }
         }
       }
     }
     elseif (!is_dir($path)) {
-      $error_code = 20;
-      $msgs[] = 'Path is not a directory.';
+      $code = 20;
+      $msgs[] = 'Path is not a directory'
+        . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
     }
 
-    if (!$error_code) {
+    if (!$code) {
       if (!is_writable($path)) {
-        $error_code = 30;
-        $msgs[] = 'Path is not writable.';
+        $code = 30;
+        $msgs[] = 'Path is not writable'
+          . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
       }
       elseif (!is_readable($path)) {
-        $error_code = 40;
-        $msgs[] = 'Path is not readable, may not be a problem.';
+        $code = 40;
+        $msgs[] = 'Path is not readable, may not be a problem'
+          . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
       }
       else {
         $msgs[] = 'Path is writable.';
         $file = $this->getFile();
         if (file_exists($file)) {
           if (!is_file($file)) {
-            $error_code = 50;
-            $msgs[] = 'File is not a file.';
+            $code = 50;
+            $msgs[] = 'File is not a file'
+              . (PHP_SAPI != 'cli' ? '' : (', file[' . $file . ']')) . '.';
           }
           elseif (!is_writable($file) || !touch($file)) {
-            $error_code = 60;
-            $msgs[] = 'File is not writable.';
+            $code = 60;
+            $msgs[] = 'File is not writable'
+              . (PHP_SAPI != 'cli' ? '' : (', file[' . $file . ']')) . '.';
           }
           else {
             $success = true;
@@ -917,12 +927,14 @@ class JsonLogEvent {
         else {
           $make = touch($file);
           if (!$make) {
-            $error_code = 70;
-            $msgs[] = 'Failed to create file.';
+            $code = 70;
+            $msgs[] = 'Failed to create file'
+              . (PHP_SAPI != 'cli' ? '' : ('[' . $file . ']')) . '.';
           }
           else {
             $success = true;
-            $msgs[] = 'Created the file.';
+            $msgs[] = 'Created the file'
+              . (PHP_SAPI != 'cli' ? '' : ('[' . $file . ']')) . '.';
           }
         }
       }
@@ -931,7 +943,7 @@ class JsonLogEvent {
     return !$getResponse ? $success : array(
       'success' => $success,
       'message' => join(' ', $msgs),
-      'code' => $error_code,
+      'code' => $code,
     );
   }
 
