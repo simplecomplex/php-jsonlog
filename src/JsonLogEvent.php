@@ -977,7 +977,7 @@ class JsonLogEvent {
    * @return string
    *   Equivalent to a Psr\Log\LogLevel class constant.
    */
-  protected static function levelToString($level) {
+  public static function levelToString($level) {
     // Support RFC 5424 integer as well as words defined by PSR-3.
     $lvl = '' . $level;
 
@@ -1005,7 +1005,7 @@ class JsonLogEvent {
    *
    * @return integer
    */
-  protected static function levelToInteger($level) {
+  public static function levelToInteger($level) {
     // Support RFC 5424 integer as well as words defined by PSR-3.
     $lvl = '' . $level;
 
@@ -1054,7 +1054,7 @@ class JsonLogEvent {
    * @return mixed
    *   String, unless no such var and arg default isn't string.
    */
-  protected static function configGet($domain, $name, $default = null) {
+  public static function configGet($domain, $name, $default = null) {
     return ($val = getenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name)) !== false ? $val : $default;
   }
 
@@ -1065,8 +1065,8 @@ class JsonLogEvent {
    * @param string $name
    * @param mixed $value
    */
-  protected static function configSet($domain, $name, $value) {
-    //$key = ($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name;
+  public static function configSet($domain, $name, $value) {
+    putenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name . '=' . $value);
   }
 
 
