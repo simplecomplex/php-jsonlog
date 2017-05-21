@@ -229,6 +229,8 @@ class JsonLogEvent {
   }
 
   /**
+   * Get event, as array.
+   *
    * @return array
    */
   public function get() {
@@ -509,6 +511,30 @@ class JsonLogEvent {
     if ($context) {
       $prefix = static::PLACEHOLDER_PREFIX;
       $suffix = static::PLACEHOLDER_SUFFIX;
+
+      // PSR-3 context 'exception'.
+      if (
+        isset($context['exception']) && $context['exception'] instanceof \Exception
+        && strpos($msg, $prefix . 'exception' . $suffix) !== false
+      ) {
+        $xcptn = $context['exception'];
+        $code = $xcptn->getCode();
+        /**
+         * @see JsonLogEvent::code()
+         */
+        if (empty($context['code'])) {
+          $context['code'] = $code;
+        }
+
+        $msg = str_replace(
+          $prefix . 'exception' . $suffix,
+          '(' . $code . ') @' . $xcptn->getFile() . ':' . $xcptn->getLine()
+          . "\n" . addcslashes($xcptn->getMessage(), "\0..\37"),
+          $msg
+        );
+        unset($context['exception'], $xcptn, $code);
+      }
+
       foreach ($context as $key => $val) {
         $msg = str_replace($prefix . $key . $suffix, static::plaintext($val), $msg);
       }
@@ -632,7 +658,7 @@ class JsonLogEvent {
   }
 
   /**
-   * Uses context 'code', 'errorCode' or 'error_code'; default zero.
+   * Uses context 'code', 'errorCode', 'error_code' or 'exception', def. zero.
    *
    * @return integer
    */
@@ -647,6 +673,9 @@ class JsonLogEvent {
       }
       if (!empty($context['error_code'])) {
         return $context['error_code'];
+      }
+      if (isset($context['exception']) && $context['exception'] instanceof \Exception) {
+        return $context['exception']->getCode();
       }
     }
     return 0;

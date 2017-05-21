@@ -1,3 +1,7 @@
+jsonlog 1.x, 2017-05-21
+-----------------------
+- Handle 'exception' context bucket as specified by PSR-3 Context.
+
 jsonlog 1.x, 2017-05-13
 -----------------------
 - JsonLog's JsonLogEvent class name is now defined as class constant instead
