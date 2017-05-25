@@ -12,6 +12,10 @@ use Psr\Log\InvalidArgumentException;
  */
 class JsonLogEvent {
 
+
+    // @todo: rename username/userName to user/user.
+    // @todo: introduce new 'session' column, which can do the same as Inspect used to do: session-id:request-no (no page-load-no)
+
   /**
    * Conf var default namespace.
    *
