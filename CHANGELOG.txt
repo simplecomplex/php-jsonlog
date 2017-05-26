@@ -2,6 +2,8 @@ jsonlog 1.x, 2017-05-26
 -----------------------
 - Use Filter Unicode and Sanitize instead own equivalents.
 - PSR coding style.
+- Soft dependencies.
+- Support PSR SimpleCache config.
 
 jsonlog 1.x, 2017-05-21
 -----------------------
