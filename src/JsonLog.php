@@ -1,5 +1,10 @@
 <?php
 
+declare(strict_types=1);
+/*
+ * Scalar parameter type declaration is a no-go until everything is strict (coercion or TypeError?).
+ */
+
 namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
@@ -35,7 +40,7 @@ class JsonLog extends AbstractLogger
      *
      * @return void
      */
-    public function log($level, $message, array $context = array())
+    public function log($level, $message, array $context = array()) : void
     {
         $event_class = static::CLASS_JSON_LOG_EVENT;
         /**

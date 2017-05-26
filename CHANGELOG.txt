@@ -1,3 +1,8 @@
+jsonlog 1.x, 2017-05-26
+-----------------------
+- Use Filter Unicode and Sanitize instead own equivalents.
+- PSR coding style.
+
 jsonlog 1.x, 2017-05-21
 -----------------------
 - Handle 'exception' context bucket as specified by PSR-3 Context.

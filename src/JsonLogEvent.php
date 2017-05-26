@@ -4,6 +4,8 @@ namespace SimpleComplex\JsonLog;
 
 use Psr\Log\LogLevel;
 use Psr\Log\InvalidArgumentException;
+use SimpleComplex\Filter\Unicode;
+use SimpleComplex\Filter\Sanitize;
 
 /**
  * JsonLog event.
@@ -124,8 +126,8 @@ class JsonLogEvent
      *  - (int) code: could be an error code
      *  - truncation: 'orig. length/final length' if message truncated
      *
-     * 'truncation' has to go after 'message', otherwise it will always be empty;
-     * that is: unknown.
+     * Column sequece:
+     * - message before truncation
      *
      * @see JsonLog::$columnsSite
      *
@@ -198,6 +200,16 @@ class JsonLogEvent
     protected $lengthTruncated = 0;
 
     /**
+     * @var \SimpleComplex\Filter\Unicode
+     */
+    protected $unicode;
+
+    /**
+     * @var \SimpleComplex\Filter\Sanitize
+     */
+    protected $sanitize;
+
+    /**
      * @param mixed $level
      *   String (word): value as defined by Psr\Log\LogLevel class constants.
      *   Integer|stringed integer: between zero and seven; RFC 5424.
@@ -215,6 +227,10 @@ class JsonLogEvent
         $this->messageRaw = '' . $message;
 
         $this->context = $context;
+
+        // Prepare filters.
+        $this->unicode = Unicode::getInstance();
+        $this->sanitize = Sanitize::getInstance();
     }
 
     /**
@@ -315,7 +331,7 @@ class JsonLogEvent
      */
     public function host()
     {
-        return !empty($_SERVER['SERVER_NAME']) ? static::sanitizeUnicode($_SERVER['SERVER_NAME']) : '';
+        return !empty($_SERVER['SERVER_NAME']) ? $this->sanitize->unicodePrintable($_SERVER['SERVER_NAME']) : '';
     }
 
     /**
@@ -423,7 +439,7 @@ class JsonLogEvent
     public function requestUri()
     {
         if (isset($_SERVER['REQUEST_URI'])) {
-            return static::sanitizeUnicode($_SERVER['REQUEST_URI']);
+            return $this->sanitize->unicodePrintable($_SERVER['REQUEST_URI']);
         }
         if (PHP_SAPI == 'cli' && isset($_SERVER['argv'])) {
             return join(' ', $_SERVER['argv']);
@@ -436,7 +452,7 @@ class JsonLogEvent
      */
     public function referer()
     {
-        return !empty($_SERVER['HTTP_REFERER']) ? static::sanitizeUnicode($_SERVER['HTTP_REFERER']) : '';
+        return !empty($_SERVER['HTTP_REFERER']) ? $this->sanitize->unicodePrintable($_SERVER['HTTP_REFERER']) : '';
     }
 
     /**
@@ -459,7 +475,7 @@ class JsonLogEvent
                 // 'client, proxy-1, proxy-2, ...'.
                 $proxy_header = static::configGet(static::CONFIG_DOMAIN, 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR');
                 if ($proxy_header && !empty($_SERVER[$proxy_header])) {
-                    $ips = str_replace(' ', '', static::sanitizeAscii($_SERVER[$proxy_header]));
+                    $ips = str_replace(' ', '', $this->sanitize->ascii($_SERVER[$proxy_header]));
                     if ($ips) {
                         $ips = explode(',', $ips);
                         // Append direct client IP, in case it is missing in the
@@ -496,8 +512,10 @@ class JsonLogEvent
      */
     public function userAgent()
     {
-        return !empty($_SERVER['HTTP_USER_AGENT']) ?
-            static::sanitizeUnicode(static::multiByteSubString($_SERVER['HTTP_USER_AGENT'], 0, static::USER_AGENT_TRUNCATE)) : '';
+        return empty($_SERVER['HTTP_USER_AGENT']) ? '' :
+            $this->sanitize->unicodePrintable(
+                $this->unicode->substr($_SERVER['HTTP_USER_AGENT'], 0, static::USER_AGENT_TRUNCATE)
+            );
     }
 
 
@@ -555,7 +573,7 @@ class JsonLogEvent
             }
 
             foreach ($context as $key => $val) {
-                $msg = str_replace($prefix . $key . $suffix, static::plaintext($val), $msg);
+                $msg = str_replace($prefix . $key . $suffix, $this->sanitize->plainText($val), $msg);
             }
         }
 
@@ -596,7 +614,7 @@ class JsonLogEvent
         }
 
         if ($truncate && $le > $truncate) {
-            $msg = static::truncateBytes($msg, $truncate);
+            $msg = $this->unicode->truncateToByteLength($msg, $truncate);
             $this->lengthTruncated = strlen($msg);
         }
 
@@ -903,14 +921,12 @@ class JsonLogEvent
         $path = $this->getPath();
         if (!$path) {
             $msgs = 'Cannot determine path.';
-        }
-        elseif (!file_exists($path)) {
+        } elseif (!file_exists($path)) {
             if (!$enable) {
                 $code = 10;
                 $msgs[] = 'Path does not exist'
                     . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
-            }
-            else {
+            } else {
                 // Get file mode of first dir that exists.
                 $mode = 11;
                 $limit = 10;
@@ -921,8 +937,7 @@ class JsonLogEvent
                             $code = 11;
                             $msgs[] = 'A fragment of path is not a directory'
                                 . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
-                        }
-                        else {
+                        } else {
                             $mode = fileperms($ancestor_path);
                         }
                         break;
@@ -933,23 +948,20 @@ class JsonLogEvent
                         $code = 12;
                         $msgs[] = 'Cannot determine file mode'
                             . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
-                    }
-                    else {
+                    } else {
                         $make = mkdir($path, $mode, true);
                         if (!$make) {
                             $code = 13;
                             $msgs[] = 'Failed to create path'
                                 . (PHP_SAPI != 'cli' ? '' : ('[' . $path . ']')) . '.';
-                        }
-                        else {
+                        } else {
                             $msgs[] = 'Created path'
                                 . (PHP_SAPI != 'cli' ? '' : ('[' . $path . ']')) . '.';
                         }
                     }
                 }
             }
-        }
-        elseif (!is_dir($path)) {
+        } elseif (!is_dir($path)) {
             $code = 20;
             $msgs[] = 'Path is not a directory'
                 . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
@@ -960,13 +972,11 @@ class JsonLogEvent
                 $code = 30;
                 $msgs[] = 'Path is not writable'
                     . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
-            }
-            elseif (!is_readable($path)) {
+            } elseif (!is_readable($path)) {
                 $code = 40;
                 $msgs[] = 'Path is not readable, may not be a problem'
                     . (PHP_SAPI != 'cli' ? '' : (', path[' . $path . ']')) . '.';
-            }
-            else {
+            } else {
                 $msgs[] = 'Path is writable.';
                 $file = $this->getFile();
                 if (file_exists($file)) {
@@ -974,24 +984,20 @@ class JsonLogEvent
                         $code = 50;
                         $msgs[] = 'File is not a file'
                             . (PHP_SAPI != 'cli' ? '' : (', file[' . $file . ']')) . '.';
-                    }
-                    elseif (!is_writable($file) || !touch($file)) {
+                    } elseif (!is_writable($file) || !touch($file)) {
                         $code = 60;
                         $msgs[] = 'File is not writable'
                             . (PHP_SAPI != 'cli' ? '' : (', file[' . $file . ']')) . '.';
-                    }
-                    else {
+                    } else {
                         $success = true;
                     }
-                }
-                else {
+                } else {
                     $make = touch($file);
                     if (!$make) {
                         $code = 70;
                         $msgs[] = 'Failed to create file'
                             . (PHP_SAPI != 'cli' ? '' : ('[' . $file . ']')) . '.';
-                    }
-                    else {
+                    } else {
                         $success = true;
                         $msgs[] = 'Created the file'
                             . (PHP_SAPI != 'cli' ? '' : ('[' . $file . ']')) . '.';
@@ -1075,8 +1081,7 @@ class JsonLogEvent
             if ($lvl >= 0 && $lvl < count(self::$levelBySeverity)) {
                 return (int) $lvl;
             }
-        }
-        else {
+        } else {
             $index = array_search($lvl, self::$levelBySeverity);
             if ($index !== false) {
                 return $index;
@@ -1131,206 +1136,5 @@ class JsonLogEvent
     public static function configSet($domain, $name, $value)
     {
         putenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name . '=' . $value);
-    }
-
-
-    // String manipulators.-------------------------------------------------------
-    // @todo: Move string string manipulators to separate library.
-
-    /**
-     * @param string $str
-     *
-     * @return string
-     */
-    protected static function plaintext($str)
-    {
-        return htmlspecialchars(strip_tags($str), ENT_QUOTES, 'UTF-8');
-    }
-
-    /**
-     * @param string $str
-     *
-     * @return string
-     */
-    protected static function sanitizeAscii($str)
-    {
-        return filter_var($str, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH);
-    }
-
-    /**
-     * @param string $str
-     *
-     * @return string
-     */
-    protected static function sanitizeUnicode($str)
-    {
-        return filter_var($str, FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW);
-    }
-
-    /**
-     * Multibyte-safe string length.
-     *
-     * @param string $str
-     *
-     * @return integer
-     */
-    protected static function multiByteStringLength($str)
-    {
-        static $mb = -1;
-        if ($str === '') {
-            return 0;
-        }
-        if ($mb == -1) {
-            $mb = function_exists('mb_strlen');
-        }
-        if ($mb) {
-            return mb_strlen($str);
-        }
-
-        $n = 0;
-        $le = strlen($str);
-        $leading = false;
-        for ($i = 0; $i < $le; $i++) {
-            // ASCII.
-            if (($ord = ord($str{$i})) < 128) {
-                ++$n;
-                $leading = false;
-            }
-            // Continuation char.
-            elseif ($ord < 192) {
-                $leading = false;
-            }
-            // Leading char.
-            else {
-                // A sequence of leadings only counts as a single.
-                if (!$leading) {
-                    ++$n;
-                }
-                $leading = true;
-            }
-        }
-        return $n;
-    }
-
-    /**
-     * Multibyte-safe sub string.
-     *
-     * @param string $str
-     * @param integer $start
-     * @param integer|null $length
-     *    Default: null.
-     *
-     * @return string
-     */
-    protected static function multiByteSubString($str, $start, $length = null)
-    {
-        static $mb = -1;
-        // Interprete non-null falsy length as zero.
-        if ($str === '' || (!$length && $length !== null)) {
-            return '';
-        }
-
-        if ($mb == -1) {
-            $mb = function_exists('mb_substr');
-        }
-        if ($mb) {
-            return !$length ? mb_substr($str, $start) : mb_substr($str, $start, $length);
-        }
-
-        // The actual algo (further down) only works when start is zero.
-        if ($start > 0) {
-            // Trim off chars before start.
-            $str = substr($str, strlen(static::multiByteSubString($str, 0, $start)));
-        }
-        // And the algo needs a length.
-        if (!$length) {
-            $length = static::multiByteStringLength($str);
-        }
-
-        $n = 0;
-        $le = strlen($str);
-        $leading = false;
-        for ($i = 0; $i < $le; $i++) {
-            // ASCII.
-            if (($ord = ord($str{$i})) < 128) {
-                if ((++$n) > $length) {
-                    return substr($str, 0, $i);
-                }
-                $leading = false;
-            }
-            // Continuation char.
-            elseif ($ord < 192) { // continuation char
-                $leading = false;
-            }
-            // Leading char.
-            else {
-                // A sequence of leadings only counts as a single.
-                if (!$leading) {
-                    if ((++$n) > $length) {
-                        return substr($str, 0, $i);
-                    }
-                }
-                $leading = true;
-            }
-        }
-        return $str;
-    }
-
-    /**
-     * Truncate multibyte safe until ASCII length is equal to/less than arg
-     * length.
-     *
-     * Does not check if arg $str is valid UTF-8.
-     *
-     * @param string $str
-     * @param integer $length
-     *   Byte length (~ ASCII char length).
-     *
-     * @return string
-     */
-    protected static function truncateBytes($str, $length)
-    {
-        if (strlen($str) <= $length) {
-            return $str;
-        }
-
-        // Truncate to UTF-8 char length (>= byte length).
-        $str = static::multiByteSubString($str, 0, $length);
-        // If all ASCII.
-        if (($le = strlen($str)) == $length) {
-            return $str;
-        }
-
-        // This algo will truncate one UTF-8 char too many,
-        // if the string ends with a UTF-8 char, because it doesn't check
-        // if a sequence of continuation bytes is complete.
-        // Thus the check preceding this algo (actual byte length matches
-        // required max length) is vital.
-        do {
-            --$le;
-            // String not valid UTF-8, because never found an ASCII or leading UTF-8
-            // byte to break before.
-            if ($le < 0) {
-                return '';
-            }
-            // An ASCII byte.
-            elseif (($ord = ord($str{$le})) < 128) {
-                // We can break before an ASCII byte.
-                $ascii = true;
-                $leading = false;
-            }
-            // A UTF-8 continuation byte.
-            elseif ($ord < 192) {
-                $ascii = $leading = false;
-            }
-            // A UTF-8 leading byte.
-            else {
-                $ascii = false;
-                // We can break before a leading UTF-8 byte.
-                $leading = true;
-            }
-        } while($le > $length || (!$ascii && !$leading));
-
-        return substr($str, 0, $le);
     }
 }
