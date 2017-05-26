@@ -12,8 +12,9 @@
         }
     ],
     "require": {
-        "php": ">=5.6.0",
-        "psr/log": "^1.0"
+        "php": ">=7.0",
+        "psr/log": "^1.0",
+        "simplecomplex/filter": "dev-develop"
     },
     "suggest": {
         "ext-mbstring": "Lightweight UTF-8 support.",
