@@ -13,6 +13,8 @@ use Psr\Log\AbstractLogger;
 /**
  * PSR-3 logger which files events as JSON.
  *
+ * Proxy class for actual logger instances of JsonLogEvent.
+ *
  * @see \SimpleComplex\JsonLog\JsonLogEvent
  *
  * @package SimpleComplex\JsonLog

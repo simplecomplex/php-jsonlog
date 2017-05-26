@@ -577,6 +577,7 @@ class JsonLogEvent
             }
         }
 
+        // @todo: don't do this.
         // Strip tags if message starts with < (Inspect logs in tag).
         if (
             !static::configGet(static::CONFIG_DOMAIN, 'keep_enclosing_tag')
