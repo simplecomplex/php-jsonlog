@@ -16,6 +16,8 @@ use SimpleComplex\Filter\Sanitize;
 /**
  * JsonLog event.
  *
+ * @internal
+ *
  * @package SimpleComplex\JsonLog
  */
 class JsonLogEvent
@@ -33,7 +35,7 @@ class JsonLogEvent
 
     /**
      * Delimiter between config domain and config var name, when not using
-     * server environment vars.
+     * environment vars.
      *
      * @var string
      */
@@ -229,12 +231,15 @@ class JsonLogEvent
      * Does not check dependencies; JsonLog constructor does that.
      *
      * @see JsonLog::__construct()
+     * @see JsonLog::getInstance()
      * @see JsonLog::log()
      *
+     * @internal
+     *
      * @param array $dependencies {
-     *      @var CacheInterface|null $config
-     *      @var Unicode $unicode
-     *      @var Sanitize $sanitize
+     *      @var CacheInterface|null $config  Optional, null will do.
+     *      @var Unicode $unicode  Required.
+     *      @var Sanitize $sanitize  Required.
      * }
      * @param mixed $level
      *      String (word): value as defined by Psr\Log\LogLevel class constants.
@@ -1100,12 +1105,12 @@ class JsonLogEvent
 
         // RFC 5424 integer.
         if (ctype_digit($lvl)) {
-            if ($lvl >= 0 && $lvl < count(self::LEVEL_BY_SEVERITY)) {
-                return self::LEVEL_BY_SEVERITY[$lvl];
+            if ($lvl >= 0 && $lvl < count(static::LEVEL_BY_SEVERITY)) {
+                return static::LEVEL_BY_SEVERITY[$lvl];
             }
         }
         // Word defined by PSR-3.
-        elseif (in_array($lvl, self::LEVEL_BY_SEVERITY)) {
+        elseif (in_array($lvl, static::LEVEL_BY_SEVERITY)) {
             return $lvl;
         }
 
@@ -1128,11 +1133,11 @@ class JsonLogEvent
         $lvl = '' . $level;
 
         if (ctype_digit($lvl)) {
-            if ($lvl >= 0 && $lvl < count(self::LEVEL_BY_SEVERITY)) {
+            if ($lvl >= 0 && $lvl < count(static::LEVEL_BY_SEVERITY)) {
                 return (int) $lvl;
             }
         } else {
-            $index = array_search($lvl, self::LEVEL_BY_SEVERITY);
+            $index = array_search($lvl, static::LEVEL_BY_SEVERITY);
             if ($index !== false) {
                 return $index;
             }
@@ -1143,22 +1148,26 @@ class JsonLogEvent
 
     /**
      * Get config var.
-
-     *  Vars:
-     *  - (int) threshold
-     *  - (int) truncate
-     *  - (str) siteid
-     *  - (str) type
-     *  - (str) path
-     *  - (str) file_time: date() pattern
-     *  - (str) canonical
-     *  - (str) tags: comma-separated list
-     *  - (str) reverse_proxy_addresses: comma-separated list
-     *  - (str) reverse_proxy_header: default HTTP_X_FORWARDED_FOR
-     *  - (bool|int) keep_enclosing_tag
      *
-     * This implementation attempts to get from server environment variables.
-     * Their actual names will be prefixed by CONFIG_DOMAIN; example
+     * If JsonLog was provided with a config object, that will be used.
+     * Otherwise this implementation uses environment vars.
+     *
+     *  Vars, and their effective defaults:
+     *  - (int) threshold:  warning (THRESHOLD_DEFAULT)
+     *  - (int) truncate:   64 (TRUNCATE_DEFAULT)
+     *  - (str) siteid:     a dir name in document root, or 'unknown'
+     *  - (str) type:       'webapp' (TYPE_DEFAULT)
+     *  - (str) path:       default webserver log dir + /jsonlog
+     *  - (str) file_time:  'Ymd'; date() pattern
+     *  - (str) canonical:  empty
+     *  - (str) tags:       empty; comma-separated list
+     *  - (str) reverse_proxy_addresses:    empty; comma-separated list
+     *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
+     *  - (bool|int) keep_enclosing_tag @todo: remove(?)
+     *
+     * Config object var names will be prefixed by
+     * CONFIG_DOMAIN . CONFIG_DELIMITER
+     * Environment var names will be prefixed by CONFIG_DOMAIN; example
      * lib_simplecomplex_jsonlog_siteid.
      * Beware that environment variables are always strings.
      *
@@ -1171,7 +1180,7 @@ class JsonLogEvent
      * @return mixed
      *      String, unless no such var and arg default isn't string.
      */
-    protected function configGet($domain, $name, $default = null) : mixed
+    public function configGet($domain, $name, $default = null) : mixed
     {
         if ($this->config) {
             return $this->config->get(
@@ -1183,7 +1192,8 @@ class JsonLogEvent
     }
 
     /**
-     * This implementation does nothing, since you can't save an environment var.
+     * Unless JsonLog was provided with a config object, this implementation
+     * does nothing, since you can't save an environment var.
      *
      * @param string $domain
      * @param string $name
@@ -1191,7 +1201,7 @@ class JsonLogEvent
      *
      * @return bool
      */
-    protected function configSet($domain, $name, $value) : bool
+    public function configSet($domain, $name, $value) : bool
     {
         if ($this->config) {
             return $this->config->set(

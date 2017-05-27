@@ -1,3 +1,7 @@
+jsonlog 1.x, 2017-05-27
+-----------------------
+- Only one exposed (and optional) dependency: config.
+
 jsonlog 1.x, 2017-05-26
 -----------------------
 - Use Filter Unicode and Sanitize instead own equivalents.
