@@ -1177,10 +1177,9 @@ class JsonLogEvent
      * @param mixed $default
      *      Default: null.
      *
-     * @return mixed
-     *      String, unless no such var and arg default isn't string.
+     * @return mixed|null
      */
-    public function configGet($domain, $name, $default = null) : mixed
+    public function configGet($domain, $name, $default = null)
     {
         if ($this->config) {
             return $this->config->get(
