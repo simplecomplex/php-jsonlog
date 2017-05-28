@@ -167,6 +167,21 @@ class JsonLogEvent
     ];
 
     /**
+     * Skip these columns when empty string.
+     *
+     * @var string[]
+     */
+    const SKIP_EMPTY_COLUMNS = [
+        'canonical',
+        'tags',
+        'referer',
+        'clientIp',
+        'userAgent',
+        'truncation',
+        'user',
+    ];
+
+    /**
      * Site columns are reusable across individual entries of a request.
      *
      * @var array
@@ -287,13 +302,18 @@ class JsonLogEvent
      *
      * @return array
      */
-    public function get()
+    public function get() : array
     {
+        $skip_empty = static::SKIP_EMPTY_COLUMNS;
+
         $site = static::$currentSite;
         if (!$site) {
-            $columns =& static::COLUMNS_SITE;
+            $columns = static::COLUMNS_SITE;
             foreach ($columns as $method => $name) {
-                $site[$name] = $this->{$method}();
+                $val = $this->{$method}();
+                if (!in_array($method, $skip_empty) || $val || $val !== '') {
+                    $site[$name] = $val;
+                }
             }
             unset($columns);
             static::$currentSite =& $site;
@@ -301,18 +321,24 @@ class JsonLogEvent
 
         $request = static::$currentRequest;
         if (!$request) {
-            $columns =& static::COLUMNS_REQUEST;
+            $columns = static::COLUMNS_REQUEST;
             foreach ($columns as $method => $name) {
-                $request[$name] = $this->{$method}();
+                $val = $this->{$method}();
+                if (!in_array($method, $skip_empty) || $val || $val !== '') {
+                    $request[$name] = $val;
+                }
             }
             unset($columns);
             static::$currentRequest =& $request;
         }
 
         $event = [];
-        $columns =& static::COLUMNS_EVENT;
+        $columns = static::COLUMNS_EVENT;
         foreach ($columns as $method => $name) {
-            $event[$name] = $this->{$method}();
+            $val = $this->{$method}();
+            if (!in_array($method, $skip_empty) || $val || $val !== '') {
+                $event[$name] = $val;
+            }
         }
         unset($columns);
 
@@ -346,7 +372,7 @@ class JsonLogEvent
      */
     public function type() : string
     {
-        return $this->configGet(static::CONFIG_DOMAIN, 'type', static::TYPE_DEFAULT);
+        return '' . $this->configGet(static::CONFIG_DOMAIN, 'type', static::TYPE_DEFAULT);
     }
 
     /**
@@ -437,7 +463,7 @@ class JsonLogEvent
      */
     public function canonical() : string
     {
-        return $this->configGet(static::CONFIG_DOMAIN, 'canonical', '');
+        return '' . $this->configGet(static::CONFIG_DOMAIN, 'canonical', '');
     }
 
     /**
@@ -697,7 +723,7 @@ class JsonLogEvent
         $millis = round(microtime(true) * 1000);
         $seconds = (int) floor($millis / 1000);
         $millis -= $seconds * 1000;
-        $millis = str_pad($millis, 3, '0', STR_PAD_LEFT);
+        $millis = str_pad('' . $millis, 3, '0', STR_PAD_LEFT);
 
         // PHP date('c') formats iso 8601 with timezone.
         if (!static::TIMESTAMP_UTC) {
@@ -844,7 +870,7 @@ class JsonLogEvent
     {
         $path = $this->configGet(static::CONFIG_DOMAIN, 'path', '');
         if ($path) {
-            return $path;
+            return '' . $path;
         }
 
         $host_log = ini_get('error_log');
@@ -922,13 +948,25 @@ class JsonLogEvent
     }
 
     /**
+     * @param array $event
+     *
+     * @return string
+     */
+    public function format(array $event) {
+        return json_encode(
+            $event,
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+        );
+    }
+
+    /**
      * Write event to file.
      *
-     * @param string $event
+     * @param string $formattedEvent
      *
      * @return bool
      */
-    public function commit($event) : bool
+    public function commit($formattedEvent) : bool
     {
         $file = $this->getFile();
         if (!$file) {
@@ -936,11 +974,7 @@ class JsonLogEvent
         }
 
         // File append, using lock (write, doesn't prevent reading).
-        $success = file_put_contents(
-            $file,
-            json_encode($event, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . "\n",
-            FILE_APPEND | LOCK_EX
-        );
+        $success = !!file_put_contents($file, $formattedEvent . "\n", FILE_APPEND | LOCK_EX);
         // If failure: log filing error to host's default log.
         if (!$success) {
             error_log('jsonlog, site ID[' . $this->siteId(true) . '], failed to write to file[' . $file . '].');
@@ -950,6 +984,8 @@ class JsonLogEvent
     }
 
     /**
+     * Check/enable JsonLogEvent to write logs.
+     *
      * May set access and modification time of file, which may confuse
      * a collection (logstash et al.).
      *

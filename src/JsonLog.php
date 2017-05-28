@@ -45,7 +45,7 @@ class JsonLog extends AbstractLogger
      *
      * @return void
      */
-    public function log($level, $message, array $context = array()) : void
+    public function log($level, $message, array $context = [])
     {
         $event_class = static::CLASS_JSON_LOG_EVENT;
         /**
@@ -64,7 +64,10 @@ class JsonLog extends AbstractLogger
 
         if ($event->severe()) {
             $event->commit(
-                $event->get()
+                $event->format(
+                    $event->get(),
+                    !empty($context['pretty'])
+                )
             );
         }
     }
@@ -168,12 +171,14 @@ class JsonLog extends AbstractLogger
      *
      * @return void
      */
-    public function setConfig(CacheInterface $config) : void
+    public function setConfig(CacheInterface $config)
     {
         $this->config = $config;
     }
 
     /**
+     * Check/enable JsonLogEvent to write logs.
+     *
      * @see \SimpleComplex\JsonLog\JsonLogEvent::committable()
      *
      * @param bool $enable
@@ -201,7 +206,9 @@ class JsonLog extends AbstractLogger
     }
 
     /**
-     * For test/debug purposes, not efficient performance-wise.
+     * Access JsonLogEvent's configuration.
+     *
+     * Mainly for test/debug purposes, not efficient performance-wise.
      *
      * @param string $action
      *      Values: set|get.
