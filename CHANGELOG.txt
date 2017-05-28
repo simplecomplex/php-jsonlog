@@ -3,6 +3,7 @@ jsonlog 1.x, 2017-05-28
 - Separate JSON formatting from committing/writing to file.
 - Skip empty columns; option (class constant).
 - Fixed type (strict) errors.
+- Pretty-printing extending logger.
 
 jsonlog 1.x, 2017-05-27
 -----------------------

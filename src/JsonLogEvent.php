@@ -952,7 +952,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function format(array $event) {
+    public function format(array $event) : string {
         return json_encode(
             $event,
             JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT

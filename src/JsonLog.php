@@ -63,10 +63,12 @@ class JsonLog extends AbstractLogger
         );
 
         if ($event->severe()) {
+            // Append to log file.
             $event->commit(
+                // To JSON.
                 $event->format(
-                    $event->get(),
-                    !empty($context['pretty'])
+                    // Compose.
+                    $event->get()
                 )
             );
         }
