@@ -10,6 +10,14 @@ namespace SimpleComplex\JsonLog;
 /**
  * Provides static class vars and methods for reusing instance(s).
  *
+ * Beware of child classes and unnammed instances
+ * ----------------------------------------------
+ * Instances of parent and child classes are inevitably kept in the same class
+ * vars - even if this trait is included explicitly in a child class too.
+ * So calling getInstance() with empty name argument will return whichever
+ * instance instantiated first - no matter what class used when calling
+ * getInstance().
+ *
  * @package SimpleComplex\JsonLog
  */
 trait GetInstanceTrait
