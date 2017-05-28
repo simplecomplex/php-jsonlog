@@ -8,8 +8,10 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 /**
- * JsonLog event which pretty-prints JSON,
+ * JsonLog event which pretty-prints  - but invalid - JSON,
  * and doesn't collapse newlines in the message.
+ *
+ * The JSON output is invalid because the message column is not JSON-encoded.
  *
  * @internal
  *
@@ -18,12 +20,19 @@ namespace SimpleComplex\JsonLog;
 class JsonLogEventPretty extends JsonLogEvent
 {
     /**
+     * Produces invalid JSON.
+     *
+     * Invalid because:
+     * - multi-lined (pretty)
+     * - 'message' not JSON-encoded
+     *
      * @param array $event
      *
      * @return string
      */
     public function format(array $event) : string {
-        // Move message to bottom, no matter what COLUMNS_EVENT says.
+        // Move 'message' to bottom, no matter what COLUMNS_EVENT says.
+        // And do not JSON-encode 'message' at all.
         $message = $event['message'];
         unset($event['message']);
         $event['message'] = '';
@@ -34,8 +43,8 @@ class JsonLogEventPretty extends JsonLogEvent
         );
 
         return '' . preg_replace(
-            '/(\n[ \t]+\"message\":[ ]*\")\"/',
-                '$1' . $message . '"',
+            '/\n([ \t]+)(\"message\":[ ]*\")\"/',
+                "\n" . '$1$2' . "\n" . $message . "\n" . '$1"',
                 $formatted,
                 1
             );

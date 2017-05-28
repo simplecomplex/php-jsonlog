@@ -8,7 +8,15 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 /**
- * PSR-3 logger which files events as 'pretty' JSON.
+ * PSR-3 logger which files events as 'pretty' - but invalid - JSON.
+ *
+ * The JSON output is invalid because the message column is not JSON-encoded.
+ *
+ * For development purposes only.
+ * The JSON output is not compatible with collectors like logstash and beats,
+ * because:
+ * - multi-lined (pretty)
+ * - 'message' not JSON-encoded
  *
  * @package SimpleComplex\JsonLog
  */
