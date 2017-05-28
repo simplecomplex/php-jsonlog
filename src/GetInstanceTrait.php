@@ -10,13 +10,18 @@ namespace SimpleComplex\JsonLog;
 /**
  * Provides static class vars and methods for reusing instance(s).
  *
- * Beware of child classes and unnammed instances
- * ----------------------------------------------
+ * Beware of child classes and same-named/unnammed instances
+ * ---------------------------------------------------------
  * Instances of parent and child classes are inevitably kept in the same class
- * vars - even if this trait is included explicitly in a child class too.
- * So calling getInstance() with empty name argument will return whichever
- * instance instantiated first - no matter what class used when calling
- * getInstance().
+ * vars. So the first call to getInstance() will determine what's returned on
+ * all later calls (using same name argument) - no matter what class used on the
+ * later calls.
+ * And including (using) this trait in child class is no fix; fatal error when
+ * calling getInstance() on child class before calling it on parent class.
+ * Using self in getInstance() couldn't change this behaviour either.
+ * Workaround: do use named - that is, differently named - instances.
+ *
+ * @see GetInstanceInterface
  *
  * @package SimpleComplex\JsonLog
  */
@@ -94,6 +99,7 @@ trait GetInstanceTrait
      *      Unrefer instance by that name, if exists.
      * @param bool $last
      *      Kill reference to last instantiated object.
+     *
      * @return void
      */
     public static function flushInstance($name = '', $last = false)

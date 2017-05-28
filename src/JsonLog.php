@@ -13,6 +13,21 @@ use SimpleComplex\Filter\Unicode;
 use SimpleComplex\Filter\Sanitize;
 
 
+// @todo: move Unicode, Sanitize, Cli and GetInstanceInterface+GetInstanceTrait to SimpleComplex\Utils package.
+// @todo: take the GetInstanceTrait declared in JsonLog (has best documentation).
+
+// @todo: Unicode and Sanitize shan't be passed about as (overridable) dependencies via constructor args
+// @todo: - use getInstance() in libs using these classes.
+// @todo: And then use setLogger() in bootstrapper if you want to provide a logger to these (Unicode and Sanitize) instances
+// @todo: ...after instantiation of the logger.
+
+// @todo: Config should have the same - primary - priority as the logger, and then use config->setLogger().
+// @todo: priority: 1 logger, 2 config.
+
+// @todo: Ask operations which PHP version they intend to support 7.0 or 7.1.
+
+
+
 /**
  * PSR-3 logger which files events as JSON.
  *
@@ -22,7 +37,7 @@ use SimpleComplex\Filter\Sanitize;
  *
  * @package SimpleComplex\JsonLog
  */
-class JsonLog extends AbstractLogger
+class JsonLog extends AbstractLogger implements GetInstanceInterface
 {
 
     // Psr\Log\AbstractLogger members.
@@ -75,7 +90,7 @@ class JsonLog extends AbstractLogger
     }
 
 
-    // Custom members.
+    // GetInstanceInterface implementation.
 
     /**
      * @see GetInstanceTrait
@@ -101,6 +116,10 @@ class JsonLog extends AbstractLogger
      * @see GetInstanceTrait::flushInstance()
      */
     use GetInstanceTrait;
+    //use \SimpleComplex\Filter\GetInstanceTrait;
+
+
+    // Custom members.
 
     /**
      * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
