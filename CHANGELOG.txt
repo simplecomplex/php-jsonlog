@@ -1,3 +1,8 @@
+jsonlog 1.x, 2017-05-29
+-----------------------
+- GetInstanceTrait now separates instances by class, to prevent getInstance()
+  from returning instance of other class than the class the method is called on.
+
 jsonlog 1.x, 2017-05-28
 -----------------------
 - Separate JSON formatting from committing/writing to file.

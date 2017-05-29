@@ -8,34 +8,29 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 /**
- * Provides static class vars and methods for reusing instance(s).
- *
- * Beware of child classes and same-named/unnammed instances
- * ---------------------------------------------------------
- * Instances of parent and child classes are inevitably kept in the same class
- * vars. So the first call to getInstance() will determine what's returned on
- * all later calls (using same name argument) - no matter what class used on the
- * later calls.
- * And including (using) this trait in child class is no fix; fatal error when
- * calling getInstance() on child class before calling it on parent class.
- * Using self in getInstance() couldn't change this behaviour either.
- * Workaround: do use named - that is, differently named - instances.
- *
- * @see GetInstanceInterface
+ * Provides static getInstance() method for reusing instance(s).
  *
  * @package SimpleComplex\JsonLog
  */
 trait GetInstanceTrait
 {
     /**
-     * List of previously instantiated objects, by name.
+     * List of previously instantiated objects, by class, and eventually by name.
      *
-     * @var array
+     * @var array {
+     *      @var array $parentClassName {
+     *          @var ParentClass $someName
+     *          @var ParentClass $otherName
+     *      }
+     *      @var array $childClassName {
+     *          @var ChildClass $someName
+     *      }
+     * }
      */
-    protected static $instances = array();
+    protected static $instancesByClass = [];
 
     /**
-     * Reference to last instantiated instance.
+     * Reference to last instantiated instance, of a class.
      *
      * That is: if that instance was instantiated via getInstance(),
      * or if constructor passes it's $this to this var.
@@ -47,9 +42,11 @@ trait GetInstanceTrait
      * current dependency injection pattern doesn't support calling getInstance(),
      * then constructor _should_ set/update this var.
      *
-     * @var static
+     * @var array {
+     *      @var Class $className
+     * }
      */
-    protected static $lastInstance;
+    protected static $lastInstanceByClass = [];
 
     /**
      * Get previously instantiated object or create new.
@@ -76,18 +73,19 @@ trait GetInstanceTrait
      */
     public static function getInstance($name = '', $constructorArgs = [])
     {
+        $class = get_called_class();
         if ($name) {
-            if (isset(static::$instances[$name])) {
-                return static::$instances[$name];
+            if (isset(static::$instancesByClass[$class][$name])) {
+                return static::$instancesByClass[$class][$name];
             }
-        } elseif (static::$lastInstance) {
-            return static::$lastInstance;
+        } elseif (isset(static::$lastInstanceByClass[$class])) {
+            return static::$lastInstanceByClass[$class];
         }
 
-        static::$lastInstance = $nstnc = new static(...$constructorArgs);
+        static::$lastInstanceByClass[$class] = $nstnc = new static(...$constructorArgs);
 
         if ($name) {
-            static::$instances[$name] = $nstnc;
+            static::$instancesByClass[$class][$name] = $nstnc;
         }
         return $nstnc;
     }
@@ -104,11 +102,12 @@ trait GetInstanceTrait
      */
     public static function flushInstance($name = '', $last = false)
     {
+        $class = get_called_class();
         if ($name) {
-            unset(static::$instances[$name]);
+            unset(static::$instancesByClass[$class][$name]);
         }
         if ($last) {
-            static::$lastInstance = null;
+            static::$lastInstanceByClass[$class] = null;
         }
     }
 }

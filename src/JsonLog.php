@@ -13,7 +13,7 @@ use SimpleComplex\Filter\Unicode;
 use SimpleComplex\Filter\Sanitize;
 
 
-// @todo: move Unicode, Sanitize, Cli and GetInstanceInterface+GetInstanceTrait to SimpleComplex\Utils package.
+// @todo: move Unicode, Sanitize, Cli and GetInstanceTrait to SimpleComplex\Utils package.
 // @todo: take the GetInstanceTrait declared in JsonLog (has best documentation).
 
 // @todo: Unicode and Sanitize shan't be passed about as (overridable) dependencies via constructor args
@@ -37,7 +37,7 @@ use SimpleComplex\Filter\Sanitize;
  *
  * @package SimpleComplex\JsonLog
  */
-class JsonLog extends AbstractLogger implements GetInstanceInterface
+class JsonLog extends AbstractLogger
 {
 
     // Psr\Log\AbstractLogger members.
@@ -90,7 +90,7 @@ class JsonLog extends AbstractLogger implements GetInstanceInterface
     }
 
 
-    // GetInstanceInterface implementation.
+    // Custom members.
 
     /**
      * @see GetInstanceTrait
@@ -117,9 +117,6 @@ class JsonLog extends AbstractLogger implements GetInstanceInterface
      */
     use GetInstanceTrait;
     //use \SimpleComplex\Filter\GetInstanceTrait;
-
-
-    // Custom members.
 
     /**
      * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
