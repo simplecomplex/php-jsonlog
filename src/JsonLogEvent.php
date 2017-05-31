@@ -1,9 +1,11 @@
 <?php
-
-declare(strict_types=1);
-/*
- * Scalar parameter type declaration is a no-go until everything is strict (coercion or TypeError?).
+/**
+ * SimpleComplex PHP JsonLog
+ * @link      https://github.com/simplecomplex/php-jsonlog
+ * @copyright Copyright (c) 2014-2017 Jacob Friis Mathiasen
+ * @license   https://github.com/simplecomplex/php-jsonlog/blob/master/LICENSE (MIT License)
  */
+declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog;
 
@@ -1215,7 +1217,7 @@ class JsonLogEvent
      *
      * @return mixed|null
      */
-    public function configGet($domain, $name, $default = null)
+    public function configGet($domain, $name, $default = null) /*: ?mixed*/
     {
         if ($this->config) {
             return $this->config->get(

@@ -1,32 +1,32 @@
-jsonlog 1.x, 2017-05-29
------------------------
-- GetInstanceTrait now separates instances by class, to prevent getInstance()
-  from returning instance of other class than the class the method is called on.
+SimpleComplex/JsonLog 1.x, 2017-05-31
+-------------------------------------
+- Use parameter type declaration when possible, despite ambiguous effect for
+  method callers (coercion or TypeError).
 
-jsonlog 1.x, 2017-05-28
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-28
+-------------------------------------
 - Separate JSON formatting from committing/writing to file.
 - Skip empty columns; option (class constant).
 - Fixed type (strict) errors.
 - Pretty-printing extending logger.
 
-jsonlog 1.x, 2017-05-27
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-27
+-------------------------------------
 - Only one exposed (and optional) dependency: config.
 
-jsonlog 1.x, 2017-05-26
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-26
+-------------------------------------
 - Use Filter Unicode and Sanitize instead own equivalents.
 - PSR coding style.
 - Soft dependencies.
 - Support PSR SimpleCache config.
 
-jsonlog 1.x, 2017-05-21
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-21
+-------------------------------------
 - Handle 'exception' context bucket as specified by PSR-3 Context.
 
-jsonlog 1.x, 2017-05-13
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-13
+-------------------------------------
 - JsonLog's JsonLogEvent class name is now defined as class constant instead
   constructor parameter.
 - Conf var 'path' renamed; from 'dir'.
@@ -34,8 +34,8 @@ jsonlog 1.x, 2017-05-13
 - JsonLog's JsonLogEvent class name is now defined as class constant instead
   constructor parameter.
 
-jsonlog 1.x, 2017-05-12
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-12
+-------------------------------------
 - Most of the logic moved to event class, to be dependency injected via
   JsonLog's constructor.
 - All log properties split into site/request/event specific columns.
@@ -44,6 +44,6 @@ jsonlog 1.x, 2017-05-12
 - Added 'host' property.
 - Renamed 'level' property; from 'severity'.
 
-jsonlog 1.x, 2017-05-07
------------------------
+SimpleComplex/JsonLog 1.x, 2017-05-07
+-------------------------------------
 - Vs. Drupal 7 jsonlog: -uid, +useragent; canonical, tags not set when empty.

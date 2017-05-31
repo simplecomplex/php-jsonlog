@@ -3,7 +3,7 @@
     "type": "library",
     "description": "PSR-3 logger which files events as JSON.",
     "keywords": ["log", "PSR-3", "JSON"],
-    "homepage": "https://github.com/simplecomplex/json-log",
+    "homepage": "https://github.com/simplecomplex/php-jsonlog",
     "license": "MIT",
     "authors": [
         {
@@ -15,7 +15,7 @@
         "php": ">=7.0",
         "psr/log": "^1.0",
         "psr/simple-cache": "^1",
-        "simplecomplex/filter": "dev-develop"
+        "simplecomplex/utils": "dev-develop"
     },
     "suggest": {
         "ext-mbstring": "Lightweight UTF-8 support."

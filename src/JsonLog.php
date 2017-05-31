@@ -1,14 +1,17 @@
 <?php
-
-declare(strict_types=1);
-/*
- * Scalar parameter type declaration is a no-go until everything is strict (coercion or TypeError?).
+/**
+ * SimpleComplex PHP JsonLog
+ * @link      https://github.com/simplecomplex/php-jsonlog
+ * @copyright Copyright (c) 2014-2017 Jacob Friis Mathiasen
+ * @license   https://github.com/simplecomplex/php-jsonlog/blob/master/LICENSE (MIT License)
  */
+declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
 use Psr\SimpleCache\CacheInterface;
+use SimpleComplex\Utils\GetInstanceTrait;
 use SimpleComplex\Filter\Unicode;
 use SimpleComplex\Filter\Sanitize;
 
@@ -60,7 +63,7 @@ class JsonLog extends AbstractLogger
      *
      * @return void
      */
-    public function log($level, $message, array $context = [])
+    public function log($level, $message, array $context = []) /*: void*/
     {
         $event_class = static::CLASS_JSON_LOG_EVENT;
         /**
@@ -93,30 +96,19 @@ class JsonLog extends AbstractLogger
     // Custom members.
 
     /**
-     * @see GetInstanceTrait
+     * @see \SimpleComplex\Utils\GetInstanceTrait
      *
-     * List of previously instantiated objects, by name.
+     * Reference to last instantiated instance of this class.
      * @protected
      * @static
-     * @var array $instances
-     *
-     * Reference to last instantiated instance.
-     * @protected
-     * @static
-     * @var static $lastInstance
+     * @var static $instanceByClass
      *
      * Get previously instantiated object or create new.
      * @public
      * @static
-     * @see GetInstanceTrait::getInstance()
-     *
-     * Kill class reference(s) to instance(s).
-     * @public
-     * @static
-     * @see GetInstanceTrait::flushInstance()
+     * @see \SimpleComplex\Utils\GetInstanceTrait::getInstance()
      */
     use GetInstanceTrait;
-    //use \SimpleComplex\Filter\GetInstanceTrait;
 
     /**
      * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
@@ -169,7 +161,7 @@ class JsonLog extends AbstractLogger
      * @param CacheInterface|null $config
      *      PSR-16 based configuration instance, if any.
      */
-    public function __construct($config = null)
+    public function __construct(/*?CacheInterface*/ $config = null)
     {
         $this->config = $config;
 
@@ -189,7 +181,7 @@ class JsonLog extends AbstractLogger
      *
      * @return void
      */
-    public function setConfig(CacheInterface $config)
+    public function setConfig(CacheInterface $config) /*: void*/
     {
         $this->config = $config;
     }
