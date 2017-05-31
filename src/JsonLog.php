@@ -12,8 +12,8 @@ namespace SimpleComplex\JsonLog;
 use Psr\Log\AbstractLogger;
 use Psr\SimpleCache\CacheInterface;
 use SimpleComplex\Utils\GetInstanceTrait;
-use SimpleComplex\Filter\Unicode;
-use SimpleComplex\Filter\Sanitize;
+use SimpleComplex\Utils\Unicode;
+use SimpleComplex\Utils\Sanitize;
 
 
 // @todo: move Unicode, Sanitize, Cli and GetInstanceTrait to SimpleComplex\Utils package.
@@ -125,14 +125,14 @@ class JsonLog extends AbstractLogger
     const CLASS_JSON_LOG_EVENT = JsonLogEvent::class;
 
     /**
-     * Class name of \SimpleComplex\Filter\Unicode or extending class.
+     * Class name of \SimpleComplex\Utils\Unicode or extending class.
      *
      * @var string
      */
     const CLASS_UNICODE = Unicode::class;
 
     /**
-     * Class name of \SimpleComplex\Filter\Sanitize or extending class.
+     * Class name of \SimpleComplex\Utils\Sanitize or extending class.
      *
      * @var string
      */

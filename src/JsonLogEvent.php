@@ -12,8 +12,8 @@ namespace SimpleComplex\JsonLog;
 use Psr\Log\LogLevel;
 use Psr\Log\InvalidArgumentException;
 use Psr\SimpleCache\CacheInterface;
-use SimpleComplex\Filter\Unicode;
-use SimpleComplex\Filter\Sanitize;
+use SimpleComplex\Utils\Unicode;
+use SimpleComplex\Utils\Sanitize;
 
 /**
  * JsonLog event.
