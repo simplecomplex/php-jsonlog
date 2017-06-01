@@ -191,6 +191,17 @@ class JsonLog extends AbstractLogger
      *
      * @see \SimpleComplex\JsonLog\JsonLogEvent::committable()
      *
+     * @code
+     * // In CLI mode: Is JsonLog ready?
+     * require 'vendor/autoload.php';
+     * use \SimpleComplex\JsonLog\JsonLog;
+     * $logger = JsonLog::getInstance();
+     * // Get info, without attempt to enable.
+     * var_dump($logger->committable(false, true));
+     * // ...well, try enabling then.
+     * var_dump($logger->committable(true, true));
+     * @endcode
+     *
      * @param bool $enable
      * @param bool $getResponse
      *
