@@ -11,7 +11,7 @@ namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
 use Psr\SimpleCache\CacheInterface;
-use SimpleComplex\Utils\GetInstanceTrait;
+use SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait;
 use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
 
@@ -35,6 +35,8 @@ use SimpleComplex\Utils\Sanitize;
  * PSR-3 logger which files events as JSON.
  *
  * Proxy class for actual logger instances of JsonLogEvent.
+ *
+ * Intended as singleton - ::getInstance() - but constructor not protected.
  *
  * @see \SimpleComplex\JsonLog\JsonLogEvent
  *
@@ -96,19 +98,14 @@ class JsonLog extends AbstractLogger
     // Custom members.
 
     /**
-     * @see \SimpleComplex\Utils\GetInstanceTrait
+     * @see \SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait
      *
-     * Reference to last instantiated instance of this class.
-     * @protected
-     * @static
-     * @var static $instanceByClass
-     *
-     * Get previously instantiated object or create new.
+     * First object instantiated via this method, disregarding class called on.
      * @public
      * @static
-     * @see \SimpleComplex\Utils\GetInstanceTrait::getInstance()
+     * @see \SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait::getInstance()
      */
-    use GetInstanceTrait;
+    use GetInstanceOfFamilyTrait;
 
     /**
      * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
@@ -123,20 +120,6 @@ class JsonLog extends AbstractLogger
      * @var string
      */
     const CLASS_JSON_LOG_EVENT = JsonLogEvent::class;
-
-    /**
-     * Class name of \SimpleComplex\Utils\Unicode or extending class.
-     *
-     * @var string
-     */
-    const CLASS_UNICODE = Unicode::class;
-
-    /**
-     * Class name of \SimpleComplex\Utils\Sanitize or extending class.
-     *
-     * @var string
-     */
-    const CLASS_SANITIZE = Sanitize::class;
 
     /**
      * @var CacheInterface|null
@@ -165,10 +148,8 @@ class JsonLog extends AbstractLogger
     {
         $this->config = $config;
 
-        $this->unicode = static::CLASS_UNICODE == Unicode::class ? Unicode::getInstance() :
-            forward_static_call(static::CLASS_UNICODE . '::getInstance');
-        $this->sanitize = static::CLASS_SANITIZE == Sanitize::class ? Sanitize::getInstance() :
-            forward_static_call(static::CLASS_SANITIZE . '::getInstance');
+        $this->unicode = Unicode::getInstance();
+        $this->sanitize = Sanitize::getInstance();
     }
 
     /**
