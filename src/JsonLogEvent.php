@@ -44,6 +44,14 @@ class JsonLogEvent
     const CONFIG_DELIMITER = ':';
 
     /**
+     * Provided no config (service) object this implementation uses
+     * environment variables.
+     *
+     * @var string
+     */
+    const CONFIG_DEFAULT_PROVISION = 'environment variables';
+
+    /**
      * Less severe (higher valued) events will not be logged.
      *
      * Overridable by 'threshold' conf var.
@@ -1099,9 +1107,15 @@ class JsonLogEvent
             }
         }
 
+        if (!$getResponse) {
+            return $success;
+        }
         return !$getResponse ? $success : [
             'success' => $success,
-            'message' => join(' ', $msgs),
+            'message' => (!$success ? 'JsonLog is NOT committable' : 'JsonLog is committable')
+                .  '; using configuration provided via '
+                . (!$this->config ? static::CONFIG_DEFAULT_PROVISION : 'constructor or setConfig()') . '.'
+                . (!$msgs ? '' : ("\n" . join(' ', $msgs))),
             'code' => $code,
         ];
     }

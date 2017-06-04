@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-06-04
+-------------------------------------
+- CLI script exposing 'committable' command.
+
 SimpleComplex/JsonLog 1.x, 2017-05-31
 -------------------------------------
 - Use parameter type declaration when possible, despite ambiguous effect for

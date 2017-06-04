@@ -1,0 +1,98 @@
+<?php
+/**
+ * SimpleComplex PHP JsonLog
+ * @link      https://github.com/simplecomplex/php-jsonlog
+ * @copyright Copyright (c) 2014-2017 Jacob Friis Mathiasen
+ * @license   https://github.com/simplecomplex/php-jsonlog/blob/master/LICENSE (MIT License)
+ */
+declare(strict_types=1);
+
+namespace SimpleComplex\JsonLog\Cli;
+
+// simplecomplex/json-log/src/cli
+require '../../../../autoload.php';
+
+use SimpleComplex\JsonLog\JsonLog;
+use SimpleComplex\Utils\CliEnvironment;
+use SimpleComplex\Utils\CliCommand;
+
+/**
+ * CLI only.
+ *
+ * Expose/execute JsonLog 'committable' command.
+ *
+ * Example:
+ * @code
+ * cd vendor/simplecomplex/json-log/src/cli
+ * # Execute 'committable' command.
+ * php JsonLogCli.phpsh committable --enable --verbose
+ * @endcode
+ *
+ * @see JsonLog::committable()
+ *
+ * Script only class for IDEs to find it. Unknown to Composer autoloader.
+ *
+ * @package SimpleComplex\JsonLog\Cli
+ */
+class JsonLogCli
+{
+    /**
+     * Uses CliEnvironment/CliCommand to detect and execute commands.
+     */
+    public function __construct()
+    {
+        if (!CliEnvironment::cli()) {
+            return;
+        }
+
+        // Declare supported commands.
+        $environment = CliEnvironment::getInstance(
+            new CliCommand(
+                'committable',
+                'Check/enable JsonLog to write logs.',
+                [],
+                [
+                    'verbose' => 'List success+message+code response.',
+                    'enable' => 'Attempt to make committable if not.',
+                ],
+                [
+                    'v' => 'verbose',
+                    'e' => 'enable',
+                ]
+            )
+        );
+
+        // Let environment map command; if any match.
+        $command = $environment->command;
+        if (!$command) {
+            $environment->echoMessage($environment->commandHelp('none'));
+        } else {
+            switch ($command->name) {
+                case 'committable':
+                    $verbose = !empty($command->options['verbose']);
+                    $response = JsonLog::getInstance()->committable(!empty($command->options['enable']), $verbose);
+                    if (!$verbose) {
+                        $success = $response;
+                    } else {
+                        $success = $response['success'];
+                    }
+                    if (!$verbose) {
+                        $msg = !$success ? 'JsonLog is NOT committable.' : 'JsonLog is committable.';
+                    } else {
+                        $msg = $response['message'];
+                        if (!$success) {
+                            $msg .= "\n" . 'Code: ' . $response['code'];
+                        }
+                    }
+                    $environment->echoMessage($msg, !$success ? 'warning' : 'success');
+                    break;
+                default:
+                    throw new \LogicException(
+                        CliEnvironment::class . ' mapped unknown command ' . $command->name . '.'
+                    );
+            }
+        }
+    }
+}
+
+new JsonLogCli();
