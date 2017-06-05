@@ -806,7 +806,7 @@ class JsonLogEvent
         }
 
         if ($path) {
-            $path .= '/jsonlog';
+            $path .= '/php-jsonlog';
 
             if (!$noSave) {
                 $this->proxy->config->set($this->proxy->configDomain . 'path', $path);
@@ -996,6 +996,8 @@ class JsonLogEvent
                             . (PHP_SAPI != 'cli' ? '' : (', file[' . $file . ']')) . '.';
                     } else {
                         $success = true;
+                        $msgs[] = 'File is writable'
+                            . (PHP_SAPI != 'cli' ? '' : (', file[' . $file . ']')) . '.';
                     }
                 } else {
                     $make = touch($file);

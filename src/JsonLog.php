@@ -13,8 +13,8 @@ use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;
 use Psr\Log\InvalidArgumentException;
 use Psr\SimpleCache\CacheInterface;
-use SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait;
 use SimpleComplex\Utils\EnvVarConfig;
+use SimpleComplex\Utils\ConfigDomainDelimiterInterface;
 use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
 
@@ -106,14 +106,28 @@ class JsonLog extends AbstractLogger
     // Custom members.
 
     /**
-     * @see \SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait
+     * Reference to first object instantiated via the getInstance() method,
+     * no matter which parent/child class the method was/is called on.
      *
-     * First object instantiated via this method, disregarding class called on.
-     * @public
-     * @static
-     * @see \SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait::getInstance()
+     * @var JsonLog
      */
-    use GetInstanceOfFamilyTrait;
+    protected static $instance;
+
+    /**
+     * First object instantiated via this method, disregarding class called on.
+     *
+     * @param mixed ...$constructorParams
+     *
+     * @return JsonLog
+     *      static, really, but IDE might not resolve that.
+     */
+    public static function getInstance(...$constructorParams)
+    {
+        if (!static::$instance) {
+            static::$instance = new static(...$constructorParams);
+        }
+        return static::$instance;
+    }
 
     /**
      * Class name of \SimpleComplex\JsonLog\JsonLogEvent or extending class.
@@ -221,7 +235,8 @@ class JsonLog extends AbstractLogger
      * This class does not need a config object, if configuration is based on
      * environment vars, or if defaults are adequate for current system.
      *
-     * @param CacheInterface $config
+     * @param CacheInterface|ConfigDomainDelimiterInterface $config
+     *      Must implement CacheInterface. Here, the other interface is @IDE.
      *
      * @return void
      */
@@ -233,7 +248,9 @@ class JsonLog extends AbstractLogger
         }
 
         $this->config = $config;
-        if (method_exists($config, 'keyDomainDelimiter')) {
+        if (is_a($config, ConfigDomainDelimiterInterface::class)) {
+            // @IDE: A class implementing ConfigDomainDelimiterInterface
+            // _does_ have a keyDomainDelimiter() method.
             $this->configDomain = static::CONFIG_DOMAIN . $config->keyDomainDelimiter();
         } else {
             $this->configDomain = static::CONFIG_DOMAIN . '__';
@@ -249,22 +266,19 @@ class JsonLog extends AbstractLogger
      * @see \SimpleComplex\JsonLog\JsonLogEvent::committable()
      *
      * @code
-     * // In CLI mode: Is JsonLog ready?
-     * require 'vendor/autoload.php';
-     * use \SimpleComplex\JsonLog\JsonLog;
-     * $logger = JsonLog::getInstance();
-     * // Get info, without attempt to enable.
-     * var_dump($logger->committable(false, true));
-     * // ...well, try enabling then.
-     * var_dump($logger->committable(true, true));
+     * # In CLI mode: Is JsonLog ready?
+     * cd vendor/simplecomplex/json-log/src/cli
+     * # Execute 'committable' command.
+     * php JsonLogCli.phpsh committable --enable --commit --verbose
      * @endcode
      *
      * @param bool $enable
+     * @param bool $commitOnSuccess
      * @param bool $getResponse
      *
      * @return boolean|array
      */
-    public function committable($enable = false, $getResponse = false)
+    public function committable($enable = false, $commitOnSuccess = false, $getResponse = false)
     {
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
@@ -286,11 +300,33 @@ class JsonLog extends AbstractLogger
          */
         $event = new $event_class(
             $this,
-            LOG_DEBUG,
-            'Committable?'
+            LogLevel::DEBUG,
+            'Committable? Is this {cake} bakeable?',
+            [
+                'cake' => 'apple pie',
+                'subType' => get_class($this),
+                'code' => 7913,
+            ]
         );
 
-        return $event->committable($enable, $getResponse);
+        $result = $event->committable($enable, $getResponse);
+        if ($commitOnSuccess) {
+            if (
+                (!$getResponse && $result)
+                || ($getResponse && $result['success'])
+            ) {
+                // Append to log file.
+                $event->commit(
+                // To JSON.
+                    $event->format(
+                    // Compose.
+                        $event->get()
+                    )
+                );
+            }
+        }
+
+        return $result;
     }
 
     /**

@@ -13,6 +13,7 @@ namespace SimpleComplex\JsonLog\Cli;
 require '../../../../autoload.php';
 
 use SimpleComplex\JsonLog\JsonLog;
+use SimpleComplex\JsonLog\JsonLogPretty;
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\CliCommand;
 
@@ -25,7 +26,7 @@ use SimpleComplex\Utils\CliCommand;
  * @code
  * cd vendor/simplecomplex/json-log/src/cli
  * # Execute 'committable' command.
- * php JsonLogCli.phpsh committable --enable --verbose
+ * php JsonLogCli.phpsh committable --enable --commit --verbose
  * @endcode
  *
  * @see JsonLog::committable()
@@ -54,10 +55,14 @@ class JsonLogCli
                 [
                     'verbose' => 'List success+message+code response.',
                     'enable' => 'Attempt to make committable if not.',
+                    'commit' => 'Commit (write to log) on success.',
+                    'pretty' => 'Use \'pretty\'-formatted JSON.',
                 ],
                 [
                     'v' => 'verbose',
                     'e' => 'enable',
+                    'c' => 'commit',
+                    'p' => 'pretty',
                 ]
             )
         );
@@ -71,7 +76,14 @@ class JsonLogCli
             switch ($command->name) {
                 case 'committable':
                     $verbose = !empty($command->options['verbose']);
-                    $response = JsonLog::getInstance()->committable(!empty($command->options['enable']), $verbose);
+                    $logger = empty($command->options['pretty']) ?
+                        JsonLog::getInstance() :
+                        JsonLogPretty::getInstance();
+                    $response = $logger->committable(
+                        !empty($command->options['enable']),
+                        !empty($command->options['commit']),
+                        $verbose
+                    );
                     if (!$verbose) {
                         $success = $response;
                     } else {
