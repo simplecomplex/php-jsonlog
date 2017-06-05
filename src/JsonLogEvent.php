@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog;
 
-use SimpleComplex\Utils\Sanitize;
-use SimpleComplex\Utils\Unicode;
-
 /**
  * JsonLog event.
  *
@@ -307,7 +304,7 @@ class JsonLogEvent
      */
     public function type() : string
     {
-        return '' . $this->proxy->configGet('', 'type', static::TYPE_DEFAULT);
+        return '' . $this->proxy->config->get($this->proxy->configDomain . 'type', static::TYPE_DEFAULT);
     }
 
     /**
@@ -349,7 +346,7 @@ class JsonLogEvent
     {
         $site_id = static::$siteId;
         if (!$site_id) {
-            $site_id = $this->proxy->configGet('', 'siteid', null);
+            $site_id = $this->proxy->config->get($this->proxy->configDomain . 'siteid', null);
             if (!$site_id) {
                 // If no site ID defined: use name of last dir in document root;
                 // except if last dir name is useless, then second to last.
@@ -382,7 +379,7 @@ class JsonLogEvent
                 }
                 elseif (!$noSave) {
                     // Save it; kind of expensive to establish.
-                    $this->proxy->configSet('', 'siteid', $site_id);
+                    $this->proxy->config->set($this->proxy->configDomain . 'siteid', $site_id);
                 }
             }
             static::$siteId = $site_id;
@@ -398,7 +395,7 @@ class JsonLogEvent
      */
     public function canonical() : string
     {
-        return '' . $this->proxy->configGet('', 'canonical', '');
+        return '' . $this->proxy->config->get($this->proxy->configDomain . 'canonical', '');
     }
 
     /**
@@ -406,7 +403,7 @@ class JsonLogEvent
      */
     public function tags() : string
     {
-        $tags = $this->proxy->configGet('', 'tags');
+        $tags = $this->proxy->config->get($this->proxy->configDomain . 'tags');
 
         return !$tags ? '' : (is_array($tags) ? join(',', $tags) : ('' . $tags));
     }
@@ -468,12 +465,12 @@ class JsonLogEvent
         $client_ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
         if ($client_ip) {
             // Get list of configured trusted proxy IPs.
-            $proxy_ips = $this->proxy->configGet('', 'reverse_proxy_addresses');
+            $proxy_ips = $this->proxy->config->get($this->proxy->configDomain . 'reverse_proxy_addresses');
             if ($proxy_ips) {
                 // Get 'forwarded for' header, ideally listing
                 // 'client, proxy-1, proxy-2, ...'.
-                $proxy_header = $this->proxy->configGet(
-                    '', 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR'
+                $proxy_header = $this->proxy->config->get(
+                    $this->proxy->configDomain . 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR'
                 );
                 if ($proxy_header && !empty($_SERVER[$proxy_header])) {
                     $ips = str_replace(' ', '', $this->proxy->sanitize->ascii($_SERVER[$proxy_header]));
@@ -589,7 +586,7 @@ class JsonLogEvent
         // @todo: check how kibana displays HTML in message.
         /*
         if (
-            !$this->proxy->configGet('', 'keep_enclosing_tag')
+            !$this->proxy->config->get($this->proxy->configDomain . 'keep_enclosing_tag')
             && $msg{0} === '<'
         ) {
             $msg = strip_tags($msg);
@@ -609,7 +606,7 @@ class JsonLogEvent
 
         $truncate = static::$truncate;
         if ($truncate == -1) {
-            $truncate = $this->proxy->configGet('', 'truncate', static::TRUNCATE_DEFAULT);
+            $truncate = (int) $this->proxy->config->get($this->proxy->configDomain . 'truncate', static::TRUNCATE_DEFAULT);
             if ($truncate) {
                 // Kb to bytes.
                 $truncate *= 1024;
@@ -786,7 +783,7 @@ class JsonLogEvent
      */
     public function getPath($noSave = false) : string
     {
-        $path = $this->proxy->configGet('', 'path', '');
+        $path = $this->proxy->config->get($this->proxy->configDomain . 'path', '');
         if ($path) {
             return '' . $path;
         }
@@ -812,7 +809,7 @@ class JsonLogEvent
             $path .= '/jsonlog';
 
             if (!$noSave) {
-                $this->proxy->configSet('', 'path', $path);
+                $this->proxy->config->set($this->proxy->configDomain . 'path', $path);
             }
             return $path;
         }
@@ -855,7 +852,7 @@ class JsonLogEvent
 
         $file .= '/' . $this->siteId(true);
 
-        $fileTime = $this->proxy->configGet('', 'file_time', 'Ymd');
+        $fileTime = $this->proxy->config->get($this->proxy->configDomain . 'file_time', 'Ymd');
         if ($fileTime && $fileTime != 'none') {
             $file .= '.' . date($fileTime);
         }
@@ -1021,8 +1018,7 @@ class JsonLogEvent
         return !$getResponse ? $success : [
             'success' => $success,
             'message' => (!$success ? 'JsonLog is NOT committable' : 'JsonLog is committable')
-                .  '; using configuration provided via '
-                . (!$this->config ? static::CONFIG_DEFAULT_PROVISION : 'constructor or setConfig()') . '.'
+                .  '; using configuration provided by ' . get_class($this->proxy->config) . ' instance.'
                 . (!$msgs ? '' : ("\n" . join(' ', $msgs))),
             'code' => $code,
         ];

@@ -14,6 +14,7 @@ use Psr\Log\LogLevel;
 use Psr\Log\InvalidArgumentException;
 use Psr\SimpleCache\CacheInterface;
 use SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait;
+use SimpleComplex\Utils\EnvVarConfig;
 use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
 
@@ -53,18 +54,29 @@ class JsonLog extends AbstractLogger
      */
     public function log($level, $message, array $context = []) /*: void*/
     {
-        // Init.
-        $threshold = static::$threshold;
-        if ($threshold == -1) {
-            static::$threshold = $threshold = $this->configGet(
-                '', 'threshold', static::THRESHOLD_DEFAULT
-            );
+        // Init.----------------------------------------------------------------
+        // Load dependencies on demand.
+        if (!$this->config) {
+            $this->setConfig(EnvVarConfig::getInstance());
         }
+        if (!$this->unicode) {
+            $this->unicode = Unicode::getInstance();
+        }
+        if (!$this->sanitize) {
+            $this->sanitize = Sanitize::getInstance();
+        }
+
+
+        // Business.------------------------------------------------------------
 
         // Sufficiently severe to log?
         $severity = $this->levelToInteger($level);
+
+        if ($this->threshold == -1) {
+            $this->threshold = (int) $this->config->get($this->configDomain . 'threshold', static::THRESHOLD_DEFAULT);
+        }
         // Less is more.
-        if ($severity > $threshold) {
+        if ($severity > $this->threshold) {
             return;
         }
 
@@ -118,7 +130,20 @@ class JsonLog extends AbstractLogger
     const CLASS_JSON_LOG_EVENT = JsonLogEvent::class;
 
     /**
-     * @var CacheInterface|null
+     * Config vars, and their effective defaults:
+     *  - (int) threshold:  warning (THRESHOLD_DEFAULT)
+     *  - (int) truncate:   64 (TRUNCATE_DEFAULT)
+     *  - (str) siteid:     a dir name in document root, or 'unknown'
+     *  - (str) type:       'webapp' (TYPE_DEFAULT)
+     *  - (str) path:       default webserver log dir + /jsonlog
+     *  - (str) file_time:  'Ymd'; date() pattern
+     *  - (str) canonical:  empty
+     *  - (str) tags:       empty; comma-separated list
+     *  - (str) reverse_proxy_addresses:    empty; comma-separated list
+     *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
+     *  - (bool|int) keep_enclosing_tag @todo: remove(?)
+     *
+     * @var CacheInterface
      */
     public $config;
 
@@ -133,44 +158,36 @@ class JsonLog extends AbstractLogger
     public $sanitize;
 
     /**
-     * Checks and resolves all dependencies, whereas JsonLogEvent use them unchecked.
+     * @var string
+     */
+    public $configDomain;
+
+    /**
+     * Lightweight instantiation - dependencies are secured on demand,
+     * not by constructor.
+     *
+     * Logging methods - and committable() - will use
+     * SimpleComplex\Utils\EnvVarConfig as fallback, if no config object
+     * passed to constructor and no subsequent call to setConfig().
      *
      * @see JsonLog::setConfig()
+     * @see \SimpleComplex\Utils\EnvVarConfig
      *
      * @param CacheInterface|null $config
-     *      PSR-16 based configuration instance, if any.
+     *      PSR-16 based configuration instance.
+     *      Uses/instantiates SimpleComplex\Utils\EnvVarConfig _on demand_,
+     *      as fallback.
      */
     public function __construct(/*?CacheInterface*/ $config = null)
     {
         // Dependencies.--------------------------------------------------------
-        // Config is not required.
-        $this->config = $config;
-
-        // Extending class' constructor might provide instance by other means.
-        if (!$this->unicode) {
-            $this->unicode = Unicode::getInstance();
-        }
-        if (!$this->sanitize) {
-            $this->sanitize = Sanitize::getInstance();
+        // Extending class' constructor might provide instances by other means.
+        if (!$this->config && isset($config)) {
+            $this->setConfig($config);
         }
 
         // Business.------------------------------------------------------------
         // None.
-    }
-
-    /**
-     * Overcome mutual dependency, provide a config object after instantiation.
-     *
-     * This class does not need a config object, if configuration is based on
-     * environment vars, or if defaults are adequate for current system.
-     *
-     * @param CacheInterface $config
-     *
-     * @return void
-     */
-    public function setConfig(CacheInterface $config) /*: void*/
-    {
-        $this->config = $config;
     }
 
     /**
@@ -179,22 +196,6 @@ class JsonLog extends AbstractLogger
      * @var string
      */
     const CONFIG_DOMAIN = 'lib_simplecomplex_jsonlog';
-
-    /**
-     * Delimiter between config domain and config var name, when not using
-     * environment vars.
-     *
-     * @var string
-     */
-    const CONFIG_DELIMITER = ':';
-
-    /**
-     * Provided no config (service) object this implementation uses
-     * environment variables.
-     *
-     * @var string
-     */
-    const CONFIG_DEFAULT_PROVISION = 'environment variables';
 
     /**
      * Less severe (higher valued) events will not be logged.
@@ -208,73 +209,35 @@ class JsonLog extends AbstractLogger
     /**
      * Record configured severity threshold across events of a request.
      *
+     * Set at every call to setConfig().
+     *
      * @var integer
      */
-    protected static $threshold = -1;
+    protected $threshold = -1;
 
     /**
-     * Get config var.
+     * Overcome mutual dependency, provide a config object after instantiation.
      *
-     * If JsonLog was provided with a config object, that will be used.
-     * Otherwise this implementation uses environment vars.
+     * This class does not need a config object, if configuration is based on
+     * environment vars, or if defaults are adequate for current system.
      *
-     *  Vars, and their effective defaults:
-     *  - (int) threshold:  warning (THRESHOLD_DEFAULT)
-     *  - (int) truncate:   64 (TRUNCATE_DEFAULT)
-     *  - (str) siteid:     a dir name in document root, or 'unknown'
-     *  - (str) type:       'webapp' (TYPE_DEFAULT)
-     *  - (str) path:       default webserver log dir + /jsonlog
-     *  - (str) file_time:  'Ymd'; date() pattern
-     *  - (str) canonical:  empty
-     *  - (str) tags:       empty; comma-separated list
-     *  - (str) reverse_proxy_addresses:    empty; comma-separated list
-     *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
-     *  - (bool|int) keep_enclosing_tag @todo: remove(?)
+     * @param CacheInterface $config
      *
-     * Config object var names will be prefixed by
-     * CONFIG_DOMAIN . CONFIG_DELIMITER
-     * Environment var names will be prefixed by CONFIG_DOMAIN; example
-     * lib_simplecomplex_jsonlog_siteid.
-     * Beware that environment variables are always strings.
-     *
-     * @param string $domain
-     *      Default: static::CONFIG_DOMAIN.
-     * @param string $name
-     * @param mixed $default
-     *      Default: null.
-     *
-     * @return mixed|null
+     * @return void
      */
-    public function configGet($domain, $name, $default = null) /*: ?mixed*/
+    public function setConfig(CacheInterface $config) /*: void*/
     {
+        // Reset cross event vars, if shifting from a previous configuration.
         if ($this->config) {
-            return $this->config->get(
-                ($domain ? $domain : static::CONFIG_DOMAIN) . static::CONFIG_DELIMITER . $name,
-                $default
-            );
+            $this->threshold = -1;
         }
-        return ($val = getenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name)) !== false ? $val : $default;
-    }
 
-    /**
-     * Unless JsonLog was provided with a config object, this implementation
-     * does nothing, since you can't save an environment var.
-     *
-     * @param string $domain
-     * @param string $name
-     * @param mixed $value
-     *
-     * @return bool
-     */
-    public function configSet($domain, $name, $value) : bool
-    {
-        if ($this->config) {
-            return $this->config->set(
-                ($domain ? $domain : static::CONFIG_DOMAIN) . static::CONFIG_DELIMITER . $name,
-                $value
-            );
+        $this->config = $config;
+        if (method_exists($config, 'keyDomainDelimiter')) {
+            $this->configDomain = static::CONFIG_DOMAIN . $config->keyDomainDelimiter();
+        } else {
+            $this->configDomain = static::CONFIG_DOMAIN . '__';
         }
-        return putenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name . '=' . $value);
     }
 
     /**
@@ -303,6 +266,20 @@ class JsonLog extends AbstractLogger
      */
     public function committable($enable = false, $getResponse = false)
     {
+        // Init.----------------------------------------------------------------
+        // Load dependencies on demand.
+        if (!$this->config) {
+            $this->setConfig(EnvVarConfig::getInstance());
+        }
+        if (!$this->unicode) {
+            $this->unicode = Unicode::getInstance();
+        }
+        if (!$this->sanitize) {
+            $this->sanitize = Sanitize::getInstance();
+        }
+
+        // Business.------------------------------------------------------------
+
         $event_class = static::CLASS_JSON_LOG_EVENT;
         /**
          * @var JsonLogEvent $event

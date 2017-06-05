@@ -2,6 +2,8 @@ SimpleComplex/JsonLog 1.x, 2017-06-05
 -------------------------------------
 - JsonLog allow extending constructur to provide dependencies by other means.
 - Pass JsonLog instance to event constructor.
+- Use SimpleComplex\Utils\EnvVarConfig as fallback config object.
+- Use JsonLog config object directly in the event class.
 
 SimpleComplex/JsonLog 1.x, 2017-06-04
 -------------------------------------
