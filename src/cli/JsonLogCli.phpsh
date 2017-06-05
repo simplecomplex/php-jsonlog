@@ -62,7 +62,8 @@ class JsonLogCli
             )
         );
 
-        // Let environment map command; if any match.
+        // Let environment map command; if first (non-option) console argument
+        // one of our commands.
         $command = $environment->command;
         if (!$command) {
             $environment->echoMessage($environment->commandHelp('none'));
