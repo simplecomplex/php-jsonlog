@@ -1,5 +1,9 @@
 SimpleComplex/JsonLog 1.x, 2017-06-04
 -------------------------------------
+- JsonLog allow extending constructur to provide dependencies by other means.
+
+SimpleComplex/JsonLog 1.x, 2017-06-04
+-------------------------------------
 - CLI script exposing 'committable' command.
 
 SimpleComplex/JsonLog 1.x, 2017-05-31

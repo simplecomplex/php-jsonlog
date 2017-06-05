@@ -15,22 +15,6 @@ use SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait;
 use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
 
-
-// @todo: move Unicode, Sanitize, Cli and GetInstanceTrait to SimpleComplex\Utils package.
-// @todo: take the GetInstanceTrait declared in JsonLog (has best documentation).
-
-// @todo: Unicode and Sanitize shan't be passed about as (overridable) dependencies via constructor args
-// @todo: - use getInstance() in libs using these classes.
-// @todo: And then use setLogger() in bootstrapper if you want to provide a logger to these (Unicode and Sanitize) instances
-// @todo: ...after instantiation of the logger.
-
-// @todo: Config should have the same - primary - priority as the logger, and then use config->setLogger().
-// @todo: priority: 1 logger, 2 config.
-
-// @todo: Ask operations which PHP version they intend to support 7.0 or 7.1.
-
-
-
 /**
  * PSR-3 logger which files events as JSON.
  *
@@ -146,10 +130,20 @@ class JsonLog extends AbstractLogger
      */
     public function __construct(/*?CacheInterface*/ $config = null)
     {
+        // Dependencies.--------------------------------------------------------
+        // Config is not required.
         $this->config = $config;
 
-        $this->unicode = Unicode::getInstance();
-        $this->sanitize = Sanitize::getInstance();
+        // Extending class' constructor might provide instance by other means.
+        if (!$this->unicode) {
+            $this->unicode = Unicode::getInstance();
+        }
+        if (!$this->sanitize) {
+            $this->sanitize = Sanitize::getInstance();
+        }
+
+        // Business.------------------------------------------------------------
+        // None.
     }
 
     /**
