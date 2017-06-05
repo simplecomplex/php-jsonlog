@@ -1,6 +1,7 @@
-SimpleComplex/JsonLog 1.x, 2017-06-04
+SimpleComplex/JsonLog 1.x, 2017-06-05
 -------------------------------------
 - JsonLog allow extending constructur to provide dependencies by other means.
+- Pass JsonLog instance to event constructor.
 
 SimpleComplex/JsonLog 1.x, 2017-06-04
 -------------------------------------

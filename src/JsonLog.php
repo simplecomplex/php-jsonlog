@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
+use Psr\Log\LogLevel;
+use Psr\Log\InvalidArgumentException;
 use Psr\SimpleCache\CacheInterface;
 use SimpleComplex\Utils\Traits\GetInstanceOfFamilyTrait;
 use SimpleComplex\Utils\Unicode;
@@ -51,31 +53,41 @@ class JsonLog extends AbstractLogger
      */
     public function log($level, $message, array $context = []) /*: void*/
     {
+        // Init.
+        $threshold = static::$threshold;
+        if ($threshold == -1) {
+            static::$threshold = $threshold = $this->configGet(
+                '', 'threshold', static::THRESHOLD_DEFAULT
+            );
+        }
+
+        // Sufficiently severe to log?
+        $severity = $this->levelToInteger($level);
+        // Less is more.
+        if ($severity > $threshold) {
+            return;
+        }
+
         $event_class = static::CLASS_JSON_LOG_EVENT;
         /**
          * @var JsonLogEvent $event
          */
         $event = new $event_class(
-            [
-                'config' => $this->config,
-                'unicode' => $this->unicode,
-                'sanitize' => $this->sanitize,
-            ],
-            $level,
+            $this,
+            // LogLevel word.
+            static::levelToString($level),
             $message,
             $context
         );
 
-        if ($event->severe()) {
-            // Append to log file.
-            $event->commit(
-                // To JSON.
-                $event->format(
-                    // Compose.
-                    $event->get()
-                )
-            );
-        }
+        // Append to log file.
+        $event->commit(
+            // To JSON.
+            $event->format(
+                // Compose.
+                $event->get()
+            )
+        );
     }
 
 
@@ -108,17 +120,17 @@ class JsonLog extends AbstractLogger
     /**
      * @var CacheInterface|null
      */
-    protected $config;
+    public $config;
 
     /**
      * @var Unicode
      */
-    protected $unicode;
+    public $unicode;
 
     /**
      * @var Sanitize
      */
-    protected $sanitize;
+    public $sanitize;
 
     /**
      * Checks and resolves all dependencies, whereas JsonLogEvent use them unchecked.
@@ -162,6 +174,110 @@ class JsonLog extends AbstractLogger
     }
 
     /**
+     * Conf var default namespace.
+     *
+     * @var string
+     */
+    const CONFIG_DOMAIN = 'lib_simplecomplex_jsonlog';
+
+    /**
+     * Delimiter between config domain and config var name, when not using
+     * environment vars.
+     *
+     * @var string
+     */
+    const CONFIG_DELIMITER = ':';
+
+    /**
+     * Provided no config (service) object this implementation uses
+     * environment variables.
+     *
+     * @var string
+     */
+    const CONFIG_DEFAULT_PROVISION = 'environment variables';
+
+    /**
+     * Less severe (higher valued) events will not be logged.
+     *
+     * Overridable by 'threshold' conf var.
+     *
+     * @var int
+     */
+    const THRESHOLD_DEFAULT = LOG_WARNING;
+
+    /**
+     * Record configured severity threshold across events of a request.
+     *
+     * @var integer
+     */
+    protected static $threshold = -1;
+
+    /**
+     * Get config var.
+     *
+     * If JsonLog was provided with a config object, that will be used.
+     * Otherwise this implementation uses environment vars.
+     *
+     *  Vars, and their effective defaults:
+     *  - (int) threshold:  warning (THRESHOLD_DEFAULT)
+     *  - (int) truncate:   64 (TRUNCATE_DEFAULT)
+     *  - (str) siteid:     a dir name in document root, or 'unknown'
+     *  - (str) type:       'webapp' (TYPE_DEFAULT)
+     *  - (str) path:       default webserver log dir + /jsonlog
+     *  - (str) file_time:  'Ymd'; date() pattern
+     *  - (str) canonical:  empty
+     *  - (str) tags:       empty; comma-separated list
+     *  - (str) reverse_proxy_addresses:    empty; comma-separated list
+     *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
+     *  - (bool|int) keep_enclosing_tag @todo: remove(?)
+     *
+     * Config object var names will be prefixed by
+     * CONFIG_DOMAIN . CONFIG_DELIMITER
+     * Environment var names will be prefixed by CONFIG_DOMAIN; example
+     * lib_simplecomplex_jsonlog_siteid.
+     * Beware that environment variables are always strings.
+     *
+     * @param string $domain
+     *      Default: static::CONFIG_DOMAIN.
+     * @param string $name
+     * @param mixed $default
+     *      Default: null.
+     *
+     * @return mixed|null
+     */
+    public function configGet($domain, $name, $default = null) /*: ?mixed*/
+    {
+        if ($this->config) {
+            return $this->config->get(
+                ($domain ? $domain : static::CONFIG_DOMAIN) . static::CONFIG_DELIMITER . $name,
+                $default
+            );
+        }
+        return ($val = getenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name)) !== false ? $val : $default;
+    }
+
+    /**
+     * Unless JsonLog was provided with a config object, this implementation
+     * does nothing, since you can't save an environment var.
+     *
+     * @param string $domain
+     * @param string $name
+     * @param mixed $value
+     *
+     * @return bool
+     */
+    public function configSet($domain, $name, $value) : bool
+    {
+        if ($this->config) {
+            return $this->config->set(
+                ($domain ? $domain : static::CONFIG_DOMAIN) . static::CONFIG_DELIMITER . $name,
+                $value
+            );
+        }
+        return putenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name . '=' . $value);
+    }
+
+    /**
      * Check/enable JsonLog to write logs.
      *
      * Also available as CLI command.
@@ -192,11 +308,7 @@ class JsonLog extends AbstractLogger
          * @var JsonLogEvent $event
          */
         $event = new $event_class(
-            [
-                'config' => $this->config,
-                'unicode' => $this->unicode,
-                'sanitize' => $this->sanitize,
-            ],
+            $this,
             LOG_DEBUG,
             'Committable?'
         );
@@ -205,35 +317,84 @@ class JsonLog extends AbstractLogger
     }
 
     /**
-     * Access JsonLogEvent's configuration.
+     * PSR LogLevel doesn't define numeric values of levels,
+     * but RFC 5424 'emergency' is 0 and 'debug' is 7.
      *
-     * Mainly for test/debug purposes, not efficient performance-wise.
+     * @see \Psr\Log\LogLevel
      *
-     * @param string $action
-     *      Values: set|get.
-     * @param string $name
-     * @param mixed $value
-     *      Ignored if action is get.
-     *
-     * @return bool|mixed
+     * @var array
      */
-    public function config($action, $name, $value = null) {
-        $event_class = static::CLASS_JSON_LOG_EVENT;
-        /**
-         * @var JsonLogEvent $event
-         */
-        $event = new $event_class(
-            [
-                'config' => $this->config,
-                'unicode' => $this->unicode,
-                'sanitize' => $this->sanitize,
-            ],
-            LOG_DEBUG,
-            ''
-        );
-        if ($action == 'set') {
-            return $event->configSet('', $name, $value);
+    const LEVEL_BY_SEVERITY = [
+        LogLevel::EMERGENCY,
+        LogLevel::ALERT,
+        LogLevel::CRITICAL,
+        LogLevel::ERROR,
+        LogLevel::WARNING,
+        LogLevel::NOTICE,
+        LogLevel::INFO,
+        LogLevel::DEBUG,
+    ];
+
+    /**
+     * LogLevel word.
+     *
+     * @throws \Psr\Log\InvalidArgumentException
+     *      Invalid level argument; as proscribed by PSR-3.
+     *
+     * @param mixed $level
+     *      String (word): value as defined by Psr\Log\LogLevel class constants.
+     *      Integer|stringed integer: between zero and seven; RFC 5424.
+     *
+     * @return string
+     *      Equivalent to a Psr\Log\LogLevel class constant.
+     */
+    public function levelToString($level) : string
+    {
+        // Support RFC 5424 integer as well as words defined by PSR-3.
+        $lvl = '' . $level;
+
+        // RFC 5424 integer.
+        if (ctype_digit($lvl)) {
+            if ($lvl >= 0 && $lvl < count(static::LEVEL_BY_SEVERITY)) {
+                return static::LEVEL_BY_SEVERITY[$lvl];
+            }
         }
-        return $event->configGet('', $name);
+        // Word defined by PSR-3.
+        elseif (in_array($lvl, static::LEVEL_BY_SEVERITY)) {
+            return $lvl;
+        }
+
+        throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
+    }
+
+    /**
+     * RFC 5424 integer.
+     *
+     * @throws \Psr\Log\InvalidArgumentException
+     *      Invalid level argument; as proscribed by PSR-3.
+     *
+     * @param mixed $level
+     *      String (word): value as defined by Psr\Log\LogLevel class constants.
+     *      Integer|stringed integer: between zero and seven; RFC 5424.
+     *
+     * @return int
+     */
+    public function levelToInteger($level) : int
+    {
+        // Support RFC 5424 integer as well as words defined by PSR-3.
+        $lvl = '' . $level;
+
+        if (ctype_digit($lvl)) {
+            if ($lvl >= 0 && $lvl < count(static::LEVEL_BY_SEVERITY)) {
+                return (int) $lvl;
+            }
+        } else {
+            $index = array_search($lvl, static::LEVEL_BY_SEVERITY);
+            if ($index !== false) {
+                return $index;
+            }
+        }
+
+        throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
     }
 }

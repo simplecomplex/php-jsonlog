@@ -9,11 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog;
 
-use Psr\Log\LogLevel;
-use Psr\Log\InvalidArgumentException;
-use Psr\SimpleCache\CacheInterface;
-use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
+use SimpleComplex\Utils\Unicode;
 
 /**
  * JsonLog event.
@@ -28,37 +25,9 @@ class JsonLogEvent
 
     // @todo: introduce new 'session' column, which can do the same as Inspect used to do: session-id:request-no (no page-load-no)
 
-    /**
-     * Conf var default namespace.
-     *
-     * @var string
-     */
-    const CONFIG_DOMAIN = 'lib_simplecomplex_jsonlog';
 
-    /**
-     * Delimiter between config domain and config var name, when not using
-     * environment vars.
-     *
-     * @var string
-     */
-    const CONFIG_DELIMITER = ':';
 
-    /**
-     * Provided no config (service) object this implementation uses
-     * environment variables.
-     *
-     * @var string
-     */
-    const CONFIG_DEFAULT_PROVISION = 'environment variables';
 
-    /**
-     * Less severe (higher valued) events will not be logged.
-     *
-     * Overridable by 'threshold' conf var.
-     *
-     * @var int
-     */
-    const THRESHOLD_DEFAULT = LOG_WARNING;
 
     /**
      * Default max. byte length of the 'message' column, in kilobytes.
@@ -208,12 +177,7 @@ class JsonLogEvent
     /**
      * @var string
      */
-    protected $level = LogLevel::DEBUG;
-
-    /**
-     * @var int
-     */
-    protected $severity = LOG_DEBUG;
+    protected $level;
 
     /**
      * @var string
@@ -236,75 +200,36 @@ class JsonLogEvent
     protected $lengthTruncated = 0;
 
     /**
-     * @var CacheInterface|null
+     * @var JsonLog
      */
-    protected $config;
-
-    /**
-     * @var Unicode
-     */
-    protected $unicode;
-
-    /**
-     * @var Sanitize
-     */
-    protected $sanitize;
+    protected $proxy;
 
     /**
      * Do not call this directly, use JsonLog instead.
      *
-     * Does not check dependencies; JsonLog constructor does that.
-     *
-     * @see JsonLog::__construct()
      * @see JsonLog::getInstance()
      * @see JsonLog::log()
      *
      * @internal
      *
-     * @param array $dependencies {
-     *      @var CacheInterface|null $config  Optional, null will do.
-     *      @var Unicode $unicode  Required.
-     *      @var Sanitize $sanitize  Required.
-     * }
-     * @param mixed $level
+     * @param JsonLog $proxy
+     * @param string $level
      *      String (word): value as defined by Psr\Log\LogLevel class constants.
      *      Integer|stringed integer: between zero and seven; RFC 5424.
      * @param string $message
      *      Placeholder {word}s must correspond to keys in the context argument.
      * @param array $context
      */
-    public function __construct(array $dependencies, $level, $message, array $context = [])
+    public function __construct(JsonLog $proxy, string $level, $message, array $context = [])
     {
-        $this->config = $dependencies['config'];
-        $this->unicode = $dependencies['unicode'];
-        $this->sanitize = $dependencies['sanitize'];
+        $this->proxy = $proxy;
 
-        // Set LogLevel word.
-        $this->level = static::levelToString($level);
-        // Set RFC 5424 integer.
-        $this->severity = static::levelToInteger($level);
+        // LogLevel word.
+        $this->level = $level;
         // Stringify if not string.
         $this->messageRaw = '' . $message;
 
         $this->context = $context;
-    }
-
-    /**
-     * Record configured severity threshold across events of a request.
-     *
-     * @var integer
-     */
-    protected static $threshold = -1;
-
-    /**
-     * Check if this entry should be logged at all.
-     *
-     * @return bool
-     */
-    public function severe()
-    {
-        // Less is more.
-        return $this->severity <= $this->getThreshold();
     }
 
     /**
@@ -382,7 +307,7 @@ class JsonLogEvent
      */
     public function type() : string
     {
-        return '' . $this->configGet(static::CONFIG_DOMAIN, 'type', static::TYPE_DEFAULT);
+        return '' . $this->proxy->configGet('', 'type', static::TYPE_DEFAULT);
     }
 
     /**
@@ -399,7 +324,7 @@ class JsonLogEvent
     public function host() : string
     {
         return empty($_SERVER['SERVER_NAME']) ? '' :
-            $this->sanitize->unicodePrintable($_SERVER['SERVER_NAME']);
+            $this->proxy->sanitize->unicodePrintable($_SERVER['SERVER_NAME']);
     }
 
     /**
@@ -424,7 +349,7 @@ class JsonLogEvent
     {
         $site_id = static::$siteId;
         if (!$site_id) {
-            $site_id = $this->configGet(static::CONFIG_DOMAIN, 'siteid', null);
+            $site_id = $this->proxy->configGet('', 'siteid', null);
             if (!$site_id) {
                 // If no site ID defined: use name of last dir in document root;
                 // except if last dir name is useless, then second to last.
@@ -457,7 +382,7 @@ class JsonLogEvent
                 }
                 elseif (!$noSave) {
                     // Save it; kind of expensive to establish.
-                    $this->configSet(static::CONFIG_DOMAIN, 'siteid', $site_id);
+                    $this->proxy->configSet('', 'siteid', $site_id);
                 }
             }
             static::$siteId = $site_id;
@@ -473,7 +398,7 @@ class JsonLogEvent
      */
     public function canonical() : string
     {
-        return '' . $this->configGet(static::CONFIG_DOMAIN, 'canonical', '');
+        return '' . $this->proxy->configGet('', 'canonical', '');
     }
 
     /**
@@ -481,7 +406,7 @@ class JsonLogEvent
      */
     public function tags() : string
     {
-        $tags = $this->configGet(static::CONFIG_DOMAIN, 'tags');
+        $tags = $this->proxy->configGet('', 'tags');
 
         return !$tags ? '' : (is_array($tags) ? join(',', $tags) : ('' . $tags));
     }
@@ -508,7 +433,7 @@ class JsonLogEvent
     public function requestUri() : string
     {
         if (isset($_SERVER['REQUEST_URI'])) {
-            return $this->sanitize->unicodePrintable($_SERVER['REQUEST_URI']);
+            return $this->proxy->sanitize->unicodePrintable($_SERVER['REQUEST_URI']);
         }
         if (PHP_SAPI == 'cli' && isset($_SERVER['argv'])) {
             return join(' ', $_SERVER['argv']);
@@ -522,8 +447,8 @@ class JsonLogEvent
     public function referer() : string
     {
         return empty($_SERVER['HTTP_REFERER']) ? '' :
-            $this->unicode->substr(
-                $this->sanitize->unicodePrintable($_SERVER['HTTP_REFERER']),
+            $this->proxy->unicode->substr(
+                $this->proxy->sanitize->unicodePrintable($_SERVER['HTTP_REFERER']),
                 0,
                 255
             );
@@ -543,15 +468,15 @@ class JsonLogEvent
         $client_ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
         if ($client_ip) {
             // Get list of configured trusted proxy IPs.
-            $proxy_ips = $this->configGet(static::CONFIG_DOMAIN, 'reverse_proxy_addresses');
+            $proxy_ips = $this->proxy->configGet('', 'reverse_proxy_addresses');
             if ($proxy_ips) {
                 // Get 'forwarded for' header, ideally listing
                 // 'client, proxy-1, proxy-2, ...'.
-                $proxy_header = $this->configGet(
-                    static::CONFIG_DOMAIN, 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR'
+                $proxy_header = $this->proxy->configGet(
+                    '', 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR'
                 );
                 if ($proxy_header && !empty($_SERVER[$proxy_header])) {
-                    $ips = str_replace(' ', '', $this->sanitize->ascii($_SERVER[$proxy_header]));
+                    $ips = str_replace(' ', '', $this->proxy->sanitize->ascii($_SERVER[$proxy_header]));
                     if ($ips) {
                         $ips = explode(',', $ips);
                         // Append direct client IP, in case it is missing in the
@@ -589,8 +514,8 @@ class JsonLogEvent
     public function userAgent() : string
     {
         return empty($_SERVER['HTTP_USER_AGENT']) ? '' :
-            $this->unicode->substr(
-                $this->sanitize->unicodePrintable($_SERVER['HTTP_USER_AGENT']),
+            $this->proxy->unicode->substr(
+                $this->proxy->sanitize->unicodePrintable($_SERVER['HTTP_USER_AGENT']),
                 0,
                 static::USER_AGENT_TRUNCATE
             );
@@ -656,7 +581,7 @@ class JsonLogEvent
             }
 
             foreach ($context as $key => $val) {
-                $msg = str_replace($prefix . $key . $suffix, $this->sanitize->plainText($val), $msg);
+                $msg = str_replace($prefix . $key . $suffix, $this->proxy->sanitize->plainText($val), $msg);
             }
         }
 
@@ -664,7 +589,7 @@ class JsonLogEvent
         // @todo: check how kibana displays HTML in message.
         /*
         if (
-            !$this->configGet(static::CONFIG_DOMAIN, 'keep_enclosing_tag')
+            !$this->proxy->configGet('', 'keep_enclosing_tag')
             && $msg{0} === '<'
         ) {
             $msg = strip_tags($msg);
@@ -684,7 +609,7 @@ class JsonLogEvent
 
         $truncate = static::$truncate;
         if ($truncate == -1) {
-            $truncate = $this->configGet(static::CONFIG_DOMAIN, 'truncate', static::TRUNCATE_DEFAULT);
+            $truncate = $this->proxy->configGet('', 'truncate', static::TRUNCATE_DEFAULT);
             if ($truncate) {
                 // Kb to bytes.
                 $truncate *= 1024;
@@ -700,7 +625,7 @@ class JsonLogEvent
         }
 
         if ($truncate && $le > $truncate) {
-            $msg = $this->unicode->truncateToByteLength($msg, $truncate);
+            $msg = $this->proxy->unicode->truncateToByteLength($msg, $truncate);
             $this->lengthTruncated = strlen($msg);
         }
 
@@ -836,23 +761,6 @@ class JsonLogEvent
     // Non-column methods and helpers.--------------------------------------------
 
     /**
-     * @param bool $asString
-     *
-     * @return integer|string
-     */
-    public function getThreshold($asString = false)
-    {
-        $threshold = static::$threshold;
-        if ($threshold == -1) {
-            static::$threshold = $threshold = $this->configGet(
-                static::CONFIG_DOMAIN, 'threshold', static::THRESHOLD_DEFAULT
-            );
-        }
-
-        return !$asString ? $threshold : static::levelToString($threshold);
-    }
-
-    /**
      * Default webserver log dirs of major *nix distros.
      *
      * @var array
@@ -878,7 +786,7 @@ class JsonLogEvent
      */
     public function getPath($noSave = false) : string
     {
-        $path = $this->configGet(static::CONFIG_DOMAIN, 'path', '');
+        $path = $this->proxy->configGet('', 'path', '');
         if ($path) {
             return '' . $path;
         }
@@ -904,7 +812,7 @@ class JsonLogEvent
             $path .= '/jsonlog';
 
             if (!$noSave) {
-                $this->configSet(static::CONFIG_DOMAIN, 'path', $path);
+                $this->proxy->configSet('', 'path', $path);
             }
             return $path;
         }
@@ -947,7 +855,7 @@ class JsonLogEvent
 
         $file .= '/' . $this->siteId(true);
 
-        $fileTime = $this->configGet(static::CONFIG_DOMAIN, 'file_time', 'Ymd');
+        $fileTime = $this->proxy->configGet('', 'file_time', 'Ymd');
         if ($fileTime && $fileTime != 'none') {
             $file .= '.' . date($fileTime);
         }
@@ -1118,148 +1026,5 @@ class JsonLogEvent
                 . (!$msgs ? '' : ("\n" . join(' ', $msgs))),
             'code' => $code,
         ];
-    }
-
-    /**
-     * PSR LogLevel doesn't define numeric values of levels,
-     * but RFC 5424 'emergency' is 0 and 'debug' is 7.
-     *
-     * @see \Psr\Log\LogLevel
-     *
-     * @var array
-     */
-    const LEVEL_BY_SEVERITY = [
-        LogLevel::EMERGENCY,
-        LogLevel::ALERT,
-        LogLevel::CRITICAL,
-        LogLevel::ERROR,
-        LogLevel::WARNING,
-        LogLevel::NOTICE,
-        LogLevel::INFO,
-        LogLevel::DEBUG,
-    ];
-
-    /**
-     * @throws \Psr\Log\InvalidArgumentException
-     *      Invalid level argument; as proscribed by PSR-3.
-     *
-     * @param mixed $level
-     *      String (word): value as defined by Psr\Log\LogLevel class constants.
-     *      Integer|stringed integer: between zero and seven; RFC 5424.
-     *
-     * @return string
-     *      Equivalent to a Psr\Log\LogLevel class constant.
-     */
-    public static function levelToString($level) : string
-    {
-        // Support RFC 5424 integer as well as words defined by PSR-3.
-        $lvl = '' . $level;
-
-        // RFC 5424 integer.
-        if (ctype_digit($lvl)) {
-            if ($lvl >= 0 && $lvl < count(static::LEVEL_BY_SEVERITY)) {
-                return static::LEVEL_BY_SEVERITY[$lvl];
-            }
-        }
-        // Word defined by PSR-3.
-        elseif (in_array($lvl, static::LEVEL_BY_SEVERITY)) {
-            return $lvl;
-        }
-
-        throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-    }
-
-    /**
-     * @throws \Psr\Log\InvalidArgumentException
-     *      Invalid level argument; as proscribed by PSR-3.
-     *
-     * @param mixed $level
-     *      String (word): value as defined by Psr\Log\LogLevel class constants.
-     *      Integer|stringed integer: between zero and seven; RFC 5424.
-     *
-     * @return int
-     */
-    public static function levelToInteger($level) : int
-    {
-        // Support RFC 5424 integer as well as words defined by PSR-3.
-        $lvl = '' . $level;
-
-        if (ctype_digit($lvl)) {
-            if ($lvl >= 0 && $lvl < count(static::LEVEL_BY_SEVERITY)) {
-                return (int) $lvl;
-            }
-        } else {
-            $index = array_search($lvl, static::LEVEL_BY_SEVERITY);
-            if ($index !== false) {
-                return $index;
-            }
-        }
-
-        throw new InvalidArgumentException('Invalid log level argument [' . $level . '].');
-    }
-
-    /**
-     * Get config var.
-     *
-     * If JsonLog was provided with a config object, that will be used.
-     * Otherwise this implementation uses environment vars.
-     *
-     *  Vars, and their effective defaults:
-     *  - (int) threshold:  warning (THRESHOLD_DEFAULT)
-     *  - (int) truncate:   64 (TRUNCATE_DEFAULT)
-     *  - (str) siteid:     a dir name in document root, or 'unknown'
-     *  - (str) type:       'webapp' (TYPE_DEFAULT)
-     *  - (str) path:       default webserver log dir + /jsonlog
-     *  - (str) file_time:  'Ymd'; date() pattern
-     *  - (str) canonical:  empty
-     *  - (str) tags:       empty; comma-separated list
-     *  - (str) reverse_proxy_addresses:    empty; comma-separated list
-     *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
-     *  - (bool|int) keep_enclosing_tag @todo: remove(?)
-     *
-     * Config object var names will be prefixed by
-     * CONFIG_DOMAIN . CONFIG_DELIMITER
-     * Environment var names will be prefixed by CONFIG_DOMAIN; example
-     * lib_simplecomplex_jsonlog_siteid.
-     * Beware that environment variables are always strings.
-     *
-     * @param string $domain
-     *      Default: static::CONFIG_DOMAIN.
-     * @param string $name
-     * @param mixed $default
-     *      Default: null.
-     *
-     * @return mixed|null
-     */
-    public function configGet($domain, $name, $default = null) /*: ?mixed*/
-    {
-        if ($this->config) {
-            return $this->config->get(
-                ($domain ? $domain : static::CONFIG_DOMAIN) . static::CONFIG_DELIMITER . $name,
-                $default
-            );
-        }
-        return ($val = getenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name)) !== false ? $val : $default;
-    }
-
-    /**
-     * Unless JsonLog was provided with a config object, this implementation
-     * does nothing, since you can't save an environment var.
-     *
-     * @param string $domain
-     * @param string $name
-     * @param mixed $value
-     *
-     * @return bool
-     */
-    public function configSet($domain, $name, $value) : bool
-    {
-        if ($this->config) {
-            return $this->config->set(
-                ($domain ? $domain : static::CONFIG_DOMAIN) . static::CONFIG_DELIMITER . $name,
-                $value
-            );
-        }
-        return putenv(($domain ? $domain : static::CONFIG_DOMAIN) . '_' . $name . '=' . $value);
     }
 }
