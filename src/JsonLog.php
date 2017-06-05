@@ -59,12 +59,6 @@ class JsonLog extends AbstractLogger
         if (!$this->config) {
             $this->setConfig(EnvVarConfig::getInstance());
         }
-        if (!$this->unicode) {
-            $this->unicode = Unicode::getInstance();
-        }
-        if (!$this->sanitize) {
-            $this->sanitize = Sanitize::getInstance();
-        }
 
 
         // Business.------------------------------------------------------------
@@ -79,6 +73,19 @@ class JsonLog extends AbstractLogger
         if ($severity > $this->threshold) {
             return;
         }
+
+
+        // More init.-----------------------------------------------------------
+        // Load dependencies on demand.
+        if (!$this->unicode) {
+            $this->unicode = Unicode::getInstance();
+        }
+        if (!$this->sanitize) {
+            $this->sanitize = Sanitize::getInstance();
+        }
+
+
+        // Business.------------------------------------------------------------
 
         $event_class = static::CLASS_JSON_LOG_EVENT;
         /**

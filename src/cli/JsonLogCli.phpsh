@@ -12,10 +12,10 @@ namespace SimpleComplex\JsonLog\Cli;
 // simplecomplex/json-log/src/cli
 require '../../../../autoload.php';
 
-use SimpleComplex\JsonLog\JsonLog;
-use SimpleComplex\JsonLog\JsonLogPretty;
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\CliCommand;
+use SimpleComplex\JsonLog\JsonLog;
+use SimpleComplex\JsonLog\JsonLogPretty;
 
 /**
  * CLI only.
