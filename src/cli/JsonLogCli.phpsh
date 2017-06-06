@@ -9,8 +9,22 @@ declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog\Cli;
 
-// simplecomplex/json-log/src/cli
-require '../../../../autoload.php';
+(function()
+{
+    // Find and include Composer autoloader.
+    if (basename($path = getcwd()) == 'cli' && basename(dirname($path)) == 'src') {
+        require '../../../../autoload.php';
+        return;
+    }
+    foreach (['vendor', 'services/vendor', 'backend/vendor', 'php/vendor'] as $dir) {
+        if (file_exists($dir) && is_dir($dir)) {
+            require $dir . '/autoload.php';
+            return;
+        }
+    }
+    echo "\033[01;31m[error]\033[0m Can't locate composer autoload.\nChange dir to this script's dir, and try again.\n";
+    exit;
+})();
 
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\CliCommand;

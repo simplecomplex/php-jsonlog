@@ -480,10 +480,10 @@ class JsonLogEvent
                         // 'forwarded for' header.
                         $ips[] = $client_ip;
                         // Remove trusted proxy IPs.
-                        $netIps = array_diff($ips, $proxy_ips);
-                        if ($netIps) {
+                        $net_ips = array_diff($ips, $proxy_ips);
+                        if ($net_ips) {
                             // The right-most is the most specific.
-                            $client_ip = end($netIps);
+                            $client_ip = end($net_ips);
                         }
                         else {
                             // The 'forwarded for' header contained known proxy IPs only;
@@ -852,9 +852,9 @@ class JsonLogEvent
 
         $file .= '/' . $this->siteId(true);
 
-        $fileTime = $this->proxy->config->get($this->proxy->configDomain . 'file_time', 'Ymd');
-        if ($fileTime && $fileTime != 'none') {
-            $file .= '.' . date($fileTime);
+        $file_time = $this->proxy->config->get($this->proxy->configDomain . 'file_time', 'Ymd');
+        if ($file_time && $file_time != 'none') {
+            $file .= '.' . date($file_time);
         }
         $file .= '.json.log';
 

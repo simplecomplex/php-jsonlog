@@ -1,5 +1,10 @@
 SimpleComplex/JsonLog 1.x, 2017-06-05
 -------------------------------------
+- CLI JsonLogCli is now callable within it's parent dir and from document root,
+  if vendor dir is either: vendor, services/vendor, backend/vendor, php/vendor.
+
+SimpleComplex/JsonLog 1.x, 2017-06-05
+-------------------------------------
 - JsonLog allow extending constructur to provide dependencies by other means.
 - Pass JsonLog instance to event constructor.
 - Secure dependencies on demand, not on instantiation.
