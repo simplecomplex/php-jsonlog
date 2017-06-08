@@ -242,8 +242,7 @@ class JsonLog extends AbstractLogger
      * This class does not need a config object, if configuration is based on
      * environment vars, or if defaults are adequate for current system.
      *
-     * @param CacheInterface|ConfigDomainDelimiterInterface $config
-     *      Must implement CacheInterface. Here, the other interface is @IDE.
+     * @param CacheInterface $config
      *
      * @return void
      */
@@ -256,8 +255,9 @@ class JsonLog extends AbstractLogger
 
         $this->config = $config;
         if (is_a($config, ConfigDomainDelimiterInterface::class)) {
-            // @IDE: A class implementing ConfigDomainDelimiterInterface
-            // _does_ have a keyDomainDelimiter() method.
+            /**
+             * @see ConfigDomainDelimiterInterface::keyDomainDelimiter()
+             */
             $this->configDomain = static::CONFIG_DOMAIN . $config->keyDomainDelimiter();
         } else {
             $this->configDomain = static::CONFIG_DOMAIN . '__';
