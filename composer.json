@@ -2,7 +2,7 @@
     "name": "simplecomplex/json-log",
     "type": "library",
     "description": "PSR-3 logger which files events as JSON.",
-    "keywords": ["log", "PSR-3", "JSON"],
+    "keywords": ["log", "PSR-3", "JSON", "PHP"],
     "homepage": "https://github.com/simplecomplex/php-jsonlog",
     "license": "MIT",
     "authors": [
