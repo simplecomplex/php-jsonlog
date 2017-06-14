@@ -19,12 +19,7 @@ namespace SimpleComplex\JsonLog;
 class JsonLogEvent
 {
 
-
     // @todo: introduce new 'session' column, which can do the same as Inspect used to do: session-id:request-no (no page-load-no)
-
-
-
-
 
     /**
      * Default max. byte length of the 'message' column, in kilobytes.
@@ -187,6 +182,13 @@ class JsonLogEvent
     protected $context = [];
 
     /**
+     * Custom columns set as constructor arg (arr) context[log_custom_columns].
+     *
+     * @var array
+     */
+    protected $customColumns = [];
+
+    /**
      * @var int
      */
     protected $lengthPrepared = 0;
@@ -227,6 +229,10 @@ class JsonLogEvent
         $this->messageRaw = '' . $message;
 
         $this->context = $context;
+        if (!empty($this->context['log_custom_columns'])) {
+            $this->customColumns = $this->context['log_custom_columns'];
+        }
+        unset($this->context['log_custom_columns']);
     }
 
     /**
@@ -273,6 +279,16 @@ class JsonLogEvent
             }
         }
         unset($columns);
+
+        if ($this->customColumns) {
+            foreach ($this->customColumns as $column => $value) {
+                if (is_callable($value)) {
+                    $event[$column] = '' . $value();
+                } else {
+                    $event[$column] = '' . $value;
+                }
+            }
+        }
 
         $sequence = static::COLUMN_SEQUENCE;
         switch ($sequence[0]) {

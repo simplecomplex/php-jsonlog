@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-06-14
+-------------------------------------
+- Context bucket 'log_custom_columns' for adding custom columns to current log.
+
 SimpleComplex/JsonLog 1.x, 2017-06-05
 -------------------------------------
 - CLI JsonLogCli is now callable within it's parent dir and from document root,
