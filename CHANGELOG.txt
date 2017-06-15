@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2017-06-15
+-------------------------------------
+- New event column correlationId; for identifying a service-based workflow
+  sequence, or likewise.
+
 SimpleComplex/JsonLog 1.x, 2017-06-14
 -------------------------------------
 - Context bucket 'log_custom_columns' for adding custom columns to current log.

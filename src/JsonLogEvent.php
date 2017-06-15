@@ -119,6 +119,7 @@ class JsonLogEvent
         'message' => 'message',
         'timestamp' => '@timestamp',
         'eventId' => 'message_id',
+        'correlationId' => 'correlation_id',
         'subType' => 'subtype',
         'level' => 'level',
         'code' => 'code',
@@ -148,6 +149,7 @@ class JsonLogEvent
         'referer',
         'clientIp',
         'userAgent',
+        'correlationId',
         'truncation',
         'user',
     ];
@@ -690,6 +692,26 @@ class JsonLogEvent
             $this->siteId(),
             true
         );
+    }
+
+    /**
+     * Correlation ID identifying a service-based workflow sequence,
+     * or likewise.
+     *
+     * @return string
+     */
+    public function correlationId() : string
+    {
+        $context =& $this->context;
+        if ($context) {
+            if (!empty($context['correlationId'])) {
+                return $context['correlationId'];
+            }
+            if (!empty($context['correlation_id'])) {
+                return $context['correlation_id'];
+            }
+        }
+        return '';
     }
 
     /**
