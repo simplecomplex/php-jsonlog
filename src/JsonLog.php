@@ -38,9 +38,6 @@ class JsonLog extends AbstractLogger
      * @see JsonLogEvent
      * @see JsonLogEvent::THRESHOLD_DEFAULT
      *
-     * @throws \Psr\Log\InvalidArgumentException
-     *      Propagated; invalid level argument.
-     *
      * @param mixed $level
      *      String (word): value as defined by Psr\Log\LogLevel class constants.
      *      Integer|stringed integer: between zero and seven; RFC 5424.
@@ -49,6 +46,9 @@ class JsonLog extends AbstractLogger
      * @param array $context
      *
      * @return void
+     *
+     * @throws \Psr\Log\InvalidArgumentException
+     *      Propagated; invalid level argument.
      */
     public function log($level, $message, array $context = []) /*: void*/
     {
