@@ -10,10 +10,9 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
-use Psr\SimpleCache\CacheInterface;
+use SimpleComplex\Config\SectionedConfigInterface;
+use SimpleComplex\Config\EnvSectionedConfig;
 use SimpleComplex\Utils\Utils;
-use SimpleComplex\Utils\EnvVarConfig;
-use SimpleComplex\Utils\ConfigDomainDelimiterInterface;
 use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
 
@@ -56,7 +55,7 @@ class JsonLog extends AbstractLogger
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
         if (!$this->config) {
-            $this->setConfig(EnvVarConfig::getInstance());
+            $this->setConfig(EnvSectionedConfig::getInstance());
         }
 
 
@@ -66,7 +65,7 @@ class JsonLog extends AbstractLogger
         $severity = Utils::getInstance()->logLevelToInteger($level);
 
         if ($this->threshold == -1) {
-            $this->threshold = (int) $this->config->get($this->configDomain . 'threshold', static::THRESHOLD_DEFAULT);
+            $this->threshold = (int) $this->config->get(static::CONFIG_SECTION, 'threshold', static::THRESHOLD_DEFAULT);
         }
         // Less is more.
         if ($severity > $this->threshold) {
@@ -163,7 +162,7 @@ class JsonLog extends AbstractLogger
      *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
      *  - (bool|int) keep_enclosing_tag @todo: remove(?)
      *
-     * @var CacheInterface
+     * @var SectionedConfigInterface
      */
     public $config;
 
@@ -178,27 +177,21 @@ class JsonLog extends AbstractLogger
     public $sanitize;
 
     /**
-     * @var string
-     */
-    public $configDomain;
-
-    /**
      * Lightweight instantiation - dependencies are secured on demand,
      * not by constructor.
      *
      * Logging methods - and committable() - will use
-     * SimpleComplex\Utils\EnvVarConfig as fallback, if no config object
+     * SimpleComplex\Config\EnvSectionedConfig as fallback, if no config object
      * passed to constructor and no subsequent call to setConfig().
      *
      * @see JsonLog::setConfig()
-     * @see \SimpleComplex\Utils\EnvVarConfig
+     * @see \SimpleComplex\Config\EnvSectionedConfig
      *
-     * @param CacheInterface|null $config
-     *      PSR-16 based configuration instance.
-     *      Uses/instantiates SimpleComplex\Utils\EnvVarConfig _on demand_,
-     *      as fallback.
+     * @param SectionedConfigInterface|null $config
+     *      Uses/instantiates SimpleComplex\Config\EnvSectionedConfig
+     *      _on demand_, as fallback.
      */
-    public function __construct(/*?CacheInterface*/ $config = null)
+    public function __construct(/*?SectionedConfigInterface*/ $config = null)
     {
         // Dependencies.--------------------------------------------------------
         // Extending class' constructor might provide instances by other means.
@@ -211,11 +204,11 @@ class JsonLog extends AbstractLogger
     }
 
     /**
-     * Conf var default namespace.
+     * Config var default section.
      *
      * @var string
      */
-    const CONFIG_DOMAIN = 'lib_simplecomplex_jsonlog';
+    const CONFIG_SECTION = 'lib_simplecomplex_jsonlog';
 
     /**
      * Less severe (higher valued) events will not be logged.
@@ -241,26 +234,18 @@ class JsonLog extends AbstractLogger
      * This class does not need a config object, if configuration is based on
      * environment vars, or if defaults are adequate for current system.
      *
-     * @param CacheInterface $config
+     * @param SectionedConfigInterface $config
      *
      * @return void
      */
-    public function setConfig(CacheInterface $config) /*: void*/
+    public function setConfig(SectionedConfigInterface $config) /*: void*/
     {
-        // Reset cross event vars, if shifting from a previous configuration.
+        // Reset cross event vars, if shifting to a new configuration.
         if ($this->config) {
             $this->threshold = -1;
         }
 
         $this->config = $config;
-        if (is_a($config, ConfigDomainDelimiterInterface::class)) {
-            /**
-             * @see ConfigDomainDelimiterInterface::keyDomainDelimiter()
-             */
-            $this->configDomain = static::CONFIG_DOMAIN . $config->keyDomainDelimiter();
-        } else {
-            $this->configDomain = static::CONFIG_DOMAIN . '__';
-        }
     }
 
     /**
@@ -289,7 +274,7 @@ class JsonLog extends AbstractLogger
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
         if (!$this->config) {
-            $this->setConfig(EnvVarConfig::getInstance());
+            $this->setConfig(EnvSectionedConfig::getInstance());
         }
         if (!$this->unicode) {
             $this->unicode = Unicode::getInstance();

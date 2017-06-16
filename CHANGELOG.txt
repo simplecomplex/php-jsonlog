@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-06-16
+-------------------------------------
+- Use sectioned configuration.
+
 SimpleComplex/JsonLog 1.x, 2017-06-15
 -------------------------------------
 - New event column correlationId; for identifying a service-based workflow

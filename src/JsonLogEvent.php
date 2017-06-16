@@ -22,6 +22,13 @@ class JsonLogEvent
     // @todo: introduce new 'session' column, which can do the same as Inspect used to do: session-id:request-no (no page-load-no)
 
     /**
+     * Config var default section.
+     *
+     * @var string
+     */
+    const CONFIG_SECTION = 'lib_simplecomplex_jsonlog';
+
+    /**
      * Default max. byte length of the 'message' column, in kilobytes.
      *
      * @var int
@@ -29,7 +36,7 @@ class JsonLogEvent
     const TRUNCATE_DEFAULT = 64;
 
     /**
-     * Overridable by 'type' conf var.
+     * Overridable by 'type' config var.
      *
      * Using 'php' is probably a bad idea, unless the event to be logged is an
      * actual PHP error.
@@ -39,7 +46,7 @@ class JsonLogEvent
     const TYPE_DEFAULT = 'webapp';
 
     /**
-     * Overridable by 'subtype' conf var.
+     * Overridable by 'subtype' config var.
      *
      * @var string
      */
@@ -75,7 +82,7 @@ class JsonLogEvent
      *  Non-obvious columns:
      *  - type: could be the name of a PHP framework
      *  - canonical: canonical site identifier across site instances
-     *  - tags: comma-separed list of tags set site-wide, by 'tags' conf var
+     *  - tags: comma-separed list of tags set site-wide, by 'tags' config var
      *
      * @var string[]
      */
@@ -314,7 +321,7 @@ class JsonLogEvent
     // Site column getters.-------------------------------------------------------
 
     /**
-     * Uses conf var 'type', defaults to TYPE_DEFAULT.
+     * Uses config var 'type', defaults to TYPE_DEFAULT.
      *
      * @see JsonLogEvent::TYPE_DEFAULT
      *
@@ -322,7 +329,7 @@ class JsonLogEvent
      */
     public function type() : string
     {
-        return '' . $this->proxy->config->get($this->proxy->configDomain . 'type', static::TYPE_DEFAULT);
+        return '' . $this->proxy->config->get(static::CONFIG_SECTION, 'type', static::TYPE_DEFAULT);
     }
 
     /**
@@ -351,9 +358,9 @@ class JsonLogEvent
 
     /**
      * This implementation uses document root dir (rather executed script's
-     * parent dir) name as fallback, if no 'siteid' conf var set.
+     * parent dir) name as fallback, if no 'siteid' config var set.
      *
-     * Attempts to save site ID to conf var 'siteid', unless truthy arg noSave.
+     * Attempts to save site ID to config var 'siteid', unless truthy arg noSave.
      *
      * @param bool $noSave
      *      Default: false; do set in config.
@@ -364,7 +371,7 @@ class JsonLogEvent
     {
         $site_id = static::$siteId;
         if (!$site_id) {
-            $site_id = $this->proxy->config->get($this->proxy->configDomain . 'siteid', null);
+            $site_id = $this->proxy->config->get(static::CONFIG_SECTION, 'siteid');
             if (!$site_id) {
                 // If no site ID defined: use name of last dir in document root;
                 // except if last dir name is useless, then second to last.
@@ -397,7 +404,7 @@ class JsonLogEvent
                 }
                 elseif (!$noSave) {
                     // Save it; kind of expensive to establish.
-                    $this->proxy->config->set($this->proxy->configDomain . 'siteid', $site_id);
+                    $this->proxy->config->set(static::CONFIG_SECTION, 'siteid', $site_id);
                 }
             }
             static::$siteId = $site_id;
@@ -413,7 +420,7 @@ class JsonLogEvent
      */
     public function canonical() : string
     {
-        return '' . $this->proxy->config->get($this->proxy->configDomain . 'canonical', '');
+        return '' . $this->proxy->config->get(static::CONFIG_SECTION, 'canonical', '');
     }
 
     /**
@@ -421,7 +428,7 @@ class JsonLogEvent
      */
     public function tags() : string
     {
-        $tags = $this->proxy->config->get($this->proxy->configDomain . 'tags');
+        $tags = $this->proxy->config->get(static::CONFIG_SECTION, 'tags');
 
         return !$tags ? '' : (is_array($tags) ? join(',', $tags) : ('' . $tags));
     }
@@ -483,12 +490,12 @@ class JsonLogEvent
         $client_ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
         if ($client_ip) {
             // Get list of configured trusted proxy IPs.
-            $proxy_ips = $this->proxy->config->get($this->proxy->configDomain . 'reverse_proxy_addresses');
+            $proxy_ips = $this->proxy->config->get(static::CONFIG_SECTION, 'reverse_proxy_addresses');
             if ($proxy_ips) {
                 // Get 'forwarded for' header, ideally listing
                 // 'client, proxy-1, proxy-2, ...'.
                 $proxy_header = $this->proxy->config->get(
-                    $this->proxy->configDomain . 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR'
+                    static::CONFIG_SECTION, 'reverse_proxy_header', 'HTTP_X_FORWARDED_FOR'
                 );
                 if ($proxy_header && !empty($_SERVER[$proxy_header])) {
                     $ips = str_replace(' ', '', $this->proxy->sanitize->ascii($_SERVER[$proxy_header]));
@@ -604,7 +611,7 @@ class JsonLogEvent
         // @todo: check how kibana displays HTML in message.
         /*
         if (
-            !$this->proxy->config->get($this->proxy->configDomain . 'keep_enclosing_tag')
+            !$this->proxy->config->get(static::CONFIG_SECTION, 'keep_enclosing_tag')
             && $msg{0} === '<'
         ) {
             $msg = strip_tags($msg);
@@ -624,7 +631,7 @@ class JsonLogEvent
 
         $truncate = static::$truncate;
         if ($truncate == -1) {
-            $truncate = (int) $this->proxy->config->get($this->proxy->configDomain . 'truncate', static::TRUNCATE_DEFAULT);
+            $truncate = (int) $this->proxy->config->get(static::CONFIG_SECTION, 'truncate', static::TRUNCATE_DEFAULT);
             if ($truncate) {
                 // Kb to bytes.
                 $truncate *= 1024;
@@ -811,7 +818,7 @@ class JsonLogEvent
 
     /**
      * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
-     * as fallback when conf var 'path' not set.
+     * as fallback when config var 'path' not set.
      *
      * Attempts to log to error_log if failing to determine dir.
      *
@@ -821,7 +828,7 @@ class JsonLogEvent
      */
     public function getPath($noSave = false) : string
     {
-        $path = $this->proxy->config->get($this->proxy->configDomain . 'path', '');
+        $path = $this->proxy->config->get(static::CONFIG_SECTION, 'path', '');
         if ($path) {
             return '' . $path;
         }
@@ -847,7 +854,7 @@ class JsonLogEvent
             $path .= '/php-jsonlog';
 
             if (!$noSave) {
-                $this->proxy->config->set($this->proxy->configDomain . 'path', $path);
+                $this->proxy->config->set(static::CONFIG_SECTION, 'path', $path);
             }
             return $path;
         }
@@ -865,10 +872,10 @@ class JsonLogEvent
     /**
      * Get path and filename.
      *
-     * Filename composition when non-empty conf var 'file_time':
+     * Filename composition when non-empty config var 'file_time':
      * [siteId].[date].json.log
      *
-     * Filename composition when empty (or 'none') conf var 'file_time':
+     * Filename composition when empty (or 'none') config var 'file_time':
      * [siteId].json.log
      *
      * @uses JsonLogEvent::getPath()
@@ -890,7 +897,7 @@ class JsonLogEvent
 
         $file .= '/' . $this->siteId(true);
 
-        $file_time = $this->proxy->config->get($this->proxy->configDomain . 'file_time', 'Ymd');
+        $file_time = $this->proxy->config->get(static::CONFIG_SECTION, 'file_time', 'Ymd');
         if ($file_time && $file_time != 'none') {
             $file .= '.' . date($file_time);
         }
