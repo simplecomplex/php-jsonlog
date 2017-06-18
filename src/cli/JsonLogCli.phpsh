@@ -9,13 +9,15 @@ declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog\Cli;
 
+// Find and include Composer autoloader.
 (function()
 {
-    // Find and include Composer autoloader.
+    // Executed in [package]/src/cli.
     if (basename($path = getcwd()) == 'cli' && basename(dirname($path)) == 'src') {
         require '../../../../autoload.php';
         return;
     }
+    // Executed in document root.
     foreach (['vendor', 'services/vendor', 'backend/vendor', 'php/vendor'] as $dir) {
         if (file_exists($dir) && is_dir($dir)) {
             require $dir . '/autoload.php';
