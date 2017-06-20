@@ -252,9 +252,9 @@ class JsonLog extends AbstractLogger
      * Check/enable JsonLog to write logs.
      *
      * Also available as CLI command.
-     * @see \SimpleComplex\JsonLog\Cli\JsonLogCli
+     * @see CliJsonLog
      *
-     * @see \SimpleComplex\JsonLog\JsonLogEvent::committable()
+     * @see JsonLogEvent::committable()
      *
      * @code
      * # In CLI mode: Is JsonLog ready?

@@ -1,0 +1,52 @@
+<?php
+/**
+ * SimpleComplex PHP JsonLog
+ * @link      https://github.com/simplecomplex/php-jsonlog
+ * @copyright Copyright (c) 2014-2017 Jacob Friis Mathiasen
+ * @license   https://github.com/simplecomplex/php-jsonlog/blob/master/LICENSE (MIT License)
+ */
+declare(strict_types=1);
+
+// Include Composer autoloader - re-usable snippet.-----------------------------
+(function()
+{
+    // Executed in [package]/src/cli.
+    if (basename($path = getcwd()) == 'cli' && basename(dirname($path)) == 'src') {
+        require '../../../../autoload.php';
+        return;
+    }
+    // Executed in document root; one or to stops above 'vendor' dir.
+    $vendor_dir = 'vendor';
+    $vendor_path = '';
+    if (file_exists($vendor_dir) && is_dir($vendor_dir)) {
+        $vendor_path = $vendor_dir;
+    } else {
+        $iter = new \FilesystemIterator('', \FilesystemIterator::FOLLOW_SYMLINKS);
+        foreach ($iter as $item) {
+            if ($item->isDir()) {
+                $path = $item->getPathName();
+                $sub_iter = new \FilesystemIterator($path, \FilesystemIterator::FOLLOW_SYMLINKS);
+                foreach ($sub_iter as $sub_item) {
+                    if ($sub_item->isDir() && $sub_item->getFilename() == $vendor_dir) {
+                        $vendor_path = $path . '/' . $vendor_dir;
+                        break 2;
+                    }
+                }
+            }
+        }
+    }
+    if ($vendor_path) {
+        require $vendor_path . '/autoload.php';
+        return;
+    }
+    echo "\033[01;31m[error]\033[0m Can't locate composer autoload.\nChange dir to this script's dir, and try again.\n";
+    exit;
+})();
+// /Include Composer autoloader - re-usable snippet.----------------------------
+
+
+// Work.------------------------------------------------------------------------
+
+use SimpleComplex\JsonLog\CliJsonLog;
+
+new CliJsonLog();

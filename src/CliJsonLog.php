@@ -7,31 +7,10 @@
  */
 declare(strict_types=1);
 
-namespace SimpleComplex\JsonLog\Cli;
-
-// Find and include Composer autoloader.
-(function()
-{
-    // Executed in [package]/src/cli.
-    if (basename($path = getcwd()) == 'cli' && basename(dirname($path)) == 'src') {
-        require '../../../../autoload.php';
-        return;
-    }
-    // Executed in document root.
-    foreach (['vendor', 'services/vendor', 'backend/vendor', 'php/vendor'] as $dir) {
-        if (file_exists($dir) && is_dir($dir)) {
-            require $dir . '/autoload.php';
-            return;
-        }
-    }
-    echo "\033[01;31m[error]\033[0m Can't locate composer autoload.\nChange dir to this script's dir, and try again.\n";
-    exit;
-})();
+namespace SimpleComplex\JsonLog;
 
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\CliCommand;
-use SimpleComplex\JsonLog\JsonLog;
-use SimpleComplex\JsonLog\JsonLogPretty;
 
 /**
  * CLI only.
@@ -42,28 +21,30 @@ use SimpleComplex\JsonLog\JsonLogPretty;
  * @code
  * cd vendor/simplecomplex/json-log/src/cli
  * # Execute 'committable' command.
- * php JsonLogCli.phpsh committable --enable --commit --verbose
+ * php json_log.phpsh committable --enable --commit --verbose --pretty
  * @endcode
  *
  * @see JsonLog::committable()
  *
- * Script only class for IDEs to find it. Unknown to Composer autoloader.
- *
- * @package SimpleComplex\JsonLog\Cli
+ * @package SimpleComplex\JsonLog
  */
-class JsonLogCli
+class CliJsonLog
 {
     /**
      * Uses CliEnvironment/CliCommand to detect and execute commands.
+     *
+     * @throws \LogicException
+     *      If executed in non-CLI mode.
      */
     public function __construct()
     {
         if (!CliEnvironment::cli()) {
-            return;
+            throw new \LogicException('Cli mode only.');
         }
 
+        $environment = CliEnvironment::getInstance();
         // Declare supported commands.
-        $environment = CliEnvironment::getInstance(
+        $environment->addCommandsAvailable(
             new CliCommand(
                 'committable',
                 'Check/enable JsonLog to write logs.',
@@ -113,7 +94,7 @@ class JsonLogCli
                             $msg .= "\n" . 'Code: ' . $response['code'];
                         }
                     }
-                    $environment->echoMessage($msg, !$success ? 'warning' : 'success');
+                    $environment->echoMessage($msg, !$success ? 'warning' : 'success', true);
                     break;
                 default:
                     throw new \LogicException(
@@ -123,5 +104,3 @@ class JsonLogCli
         }
     }
 }
-
-new JsonLogCli();
