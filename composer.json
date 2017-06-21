@@ -15,7 +15,8 @@
         "php": ">=7.0",
         "psr/log": "^1.0",
         "psr/simple-cache": "^1",
-        "simplecomplex/utils": "dev-develop"
+        "simplecomplex/utils": "dev-develop",
+        "simplecomplex/config": "dev-develop"
     },
     "autoload": {
         "psr-4": {
