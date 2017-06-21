@@ -22,7 +22,7 @@ use SimpleComplex\Utils\CliCommand;
  * @code
  * cd vendor/simplecomplex/json-log/src/cli
  * # Execute 'committable' command.
- * php json_log.phpsh committable --enable --commit --verbose --pretty
+ * php json_log.phpsh json-log-committable --enable --commit --verbose --pretty
  * @endcode
  *
  * @see JsonLog::committable()
@@ -31,6 +31,8 @@ use SimpleComplex\Utils\CliCommand;
  */
 class CliJsonLog implements CliCommandInterface
 {
+    const CLASS_JSON_LOG = JsonLog::class;
+
     /**
      * @var string
      */
@@ -48,12 +50,11 @@ class CliJsonLog implements CliCommandInterface
             throw new \LogicException('Cli mode only.');
         }
 
-        $environment = CliEnvironment::getInstance();
-        // Declare supported commands.
-        $environment->addCommandsAvailable(
+        // Declare provided commands.
+        (CliEnvironment::getInstance())->addCommandsAvailable(
             new CliCommand(
                 $this,
-                'committable',
+                static::COMMAND_PROVIDER_ALIAS . '-committable',
                 'Check/enable JsonLog to write logs.',
                 [],
                 [
@@ -71,42 +72,54 @@ class CliJsonLog implements CliCommandInterface
     }
 
     /**
-     * @param CliCommand|null $command
+     * @return \SimpleComplex\JsonLog\JsonLog
      */
-    public function executeCommandOnMatch($command)
+    protected function getMainInstance()
     {
-        if ($command && $command->provider == static::COMMAND_PROVIDER_ALIAS) {
-            switch ($command->name) {
-                case 'committable':
-                    $verbose = !empty($command->options['verbose']);
-                    $logger = JsonLog::getInstance();
-                    $response = $logger->committable(
-                        !empty($command->options['enable']),
-                        !empty($command->options['commit']),
-                        $verbose
-                    );
-                    if (!$verbose) {
-                        $success = $response;
-                    } else {
-                        $success = $response['success'];
-                    }
-                    if (!$verbose) {
-                        $msg = !$success ? 'JsonLog is NOT committable.' : 'JsonLog is committable.';
-                    } else {
-                        $msg = $response['message'];
-                        if (!$success) {
-                            $msg .= "\n" . 'Code: ' . $response['code'];
-                        }
-                    }
+        return JsonLog::getInstance();
+    }
 
-                    $environment = CliEnvironment::getInstance();
-
-                    $environment->echoMessage($msg, !$success ? 'warning' : 'success', true);
-                    break;
-                default:
-                    return;
-            }
-            exit;
+    /**
+     * @param CliCommand $command
+     *
+     * @return void
+     *      Must exit.
+     *
+     * @throws \LogicException
+     *      If the command mapped by CliEnvironment
+     *      isn't this provider's command.
+     */
+    public function executeCommand(CliCommand $command)
+    {
+        switch ($command->name) {
+            case static::COMMAND_PROVIDER_ALIAS . '-committable':
+                $verbose = !empty($command->options['verbose']);
+                $logger = $this->getMainInstance();
+                $response = $logger->committable(
+                    !empty($command->options['enable']),
+                    !empty($command->options['commit']),
+                    $verbose
+                );
+                if (!$verbose) {
+                    $success = $response;
+                } else {
+                    $success = $response['success'];
+                }
+                if (!$verbose) {
+                    $msg = !$success ? 'JsonLog is NOT committable.' : 'JsonLog is committable.';
+                } else {
+                    $msg = $response['message'];
+                    if (!$success) {
+                        $msg .= "\n" . 'Code: ' . $response['code'];
+                    }
+                }
+                (CliEnvironment::getInstance())->echoMessage($msg, !$success ? 'warning' : 'success', true);
+                break;
+            default:
+                throw new \LogicException(
+                    'Command named[' . $command->name . '] is not provided by class[' . get_class($this) . '].'
+                );
         }
+        exit;
     }
 }
