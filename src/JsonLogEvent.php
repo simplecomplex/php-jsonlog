@@ -84,6 +84,8 @@ class JsonLogEvent
      *  - canonical: canonical site identifier across site instances
      *  - tags: comma-separed list of tags set site-wide, by 'tags' config var
      *
+     * @see JsonLogEvent::columnMap()
+     *
      * @var string[]
      */
     const COLUMNS_SITE = [
@@ -96,6 +98,8 @@ class JsonLogEvent
 
     /**
      * List of request (process) columns.
+     *
+     * @see JsonLogEvent::columnMap()
      *
      * @var string[]
      */
@@ -119,6 +123,8 @@ class JsonLogEvent
      *
      * Required column sequences:
      * - message before truncation
+     *
+     * @see JsonLogEvent::columnMap()
      *
      * @var string[]
      */
@@ -255,7 +261,7 @@ class JsonLogEvent
 
         $site = static::$currentSite;
         if (!$site) {
-            $columns = static::COLUMNS_SITE;
+            $columns = static::columnMap('site');
             foreach ($columns as $method => $name) {
                 $val = $this->{$method}();
                 if (!in_array($method, $skip_empty) || $val || $val !== '') {
@@ -268,7 +274,7 @@ class JsonLogEvent
 
         $request = static::$currentRequest;
         if (!$request) {
-            $columns = static::COLUMNS_REQUEST;
+            $columns = static::columnMap('request');
             foreach ($columns as $method => $name) {
                 $val = $this->{$method}();
                 if (!in_array($method, $skip_empty) || $val || $val !== '') {
@@ -280,7 +286,7 @@ class JsonLogEvent
         }
 
         $event = [];
-        $columns = static::COLUMNS_EVENT;
+        $columns = static::columnMap('event');
         foreach ($columns as $method => $name) {
             $val = $this->{$method}();
             if (!in_array($method, $skip_empty) || $val || $val !== '') {
@@ -317,6 +323,28 @@ class JsonLogEvent
         }
     }
 
+    /**
+     * For simpler column name and/or sequence override in extending classes.
+     *
+     * @see JsonLogEvent::COLUMNS_SITE
+     * @see JsonLogEvent::COLUMNS_REQUEST
+     * @see JsonLogEvent::COLUMNS_EVENT
+     *
+     * @param string $scope
+     *      Values: site|request|event
+     * @return array
+     */
+    public static function columnMap(string $scope) : array
+    {
+        switch ($scope) {
+            case 'event':
+                return static::COLUMNS_EVENT;
+            case 'request':
+                return static::COLUMNS_REQUEST;
+            default:
+                return static::COLUMNS_SITE;
+        }
+    }
 
     // Site column getters.-------------------------------------------------------
 
@@ -909,10 +937,34 @@ class JsonLogEvent
 
     /**
      * @param array $event
+     * @param string $format
      *
      * @return string
      */
-    public function format(array $event) : string {
+    public function format(array $event, string $format = 'default') : string {
+        switch ($format) {
+            case 'pretty':
+                return json_encode(
+                    $event,
+                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT
+                );
+            case 'prettier':
+                // Move 'message' to bottom, no matter what COLUMNS_EVENT says.
+                // And do not JSON-encode 'message' at all.
+                $message = $event['message'];
+                unset($event['message']);
+                $event['message'] = '';
+                $formatted = json_encode(
+                    $event,
+                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT
+                );
+                return '' . preg_replace(
+                        '/\n([ \t]+)(\"message\":[ ]*\")\"/',
+                        "\n" . '$1$2' . "\n" . $message . "\n" . '$1"',
+                        $formatted,
+                        1
+                    );
+        }
         return json_encode(
             $event,
             JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT

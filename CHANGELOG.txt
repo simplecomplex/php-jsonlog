@@ -1,3 +1,9 @@
+SimpleComplex/JsonLog 1.x, 2017-06-21
+-------------------------------------
+- Simplified column name and/or sequence override.
+- Pretty-printing is now a config option 'format': default|pretty|prettier;
+  not a separate event class.
+
 SimpleComplex/JsonLog 1.x, 2017-06-16
 -------------------------------------
 - Use sectioned configuration.

@@ -102,7 +102,8 @@ class JsonLog extends AbstractLogger
             // To JSON.
             $event->format(
                 // Compose.
-                $event->get()
+                $event->get(),
+                '' . $this->config->get(static::CONFIG_SECTION, 'format', 'default')
             )
         );
     }
@@ -160,6 +161,7 @@ class JsonLog extends AbstractLogger
      *  - (str) tags:       empty; comma-separated list
      *  - (str) reverse_proxy_addresses:    empty; comma-separated list
      *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
+     *  - (str) format:     default|pretty|prettier
      *  - (bool|int) keep_enclosing_tag @todo: remove(?)
      *
      * @var SectionedConfigInterface

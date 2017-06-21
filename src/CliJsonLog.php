@@ -52,7 +52,7 @@ class CliJsonLog implements CliCommandInterface
         // Declare supported commands.
         $environment->addCommandsAvailable(
             new CliCommand(
-                static::COMMAND_PROVIDER_ALIAS,
+                $this,
                 'committable',
                 'Check/enable JsonLog to write logs.',
                 [],
@@ -60,13 +60,11 @@ class CliJsonLog implements CliCommandInterface
                     'verbose' => 'List success+message+code response.',
                     'enable' => 'Attempt to make committable if not.',
                     'commit' => 'Commit (write to log) on success.',
-                    'pretty' => 'Use \'pretty\'-formatted JSON.',
                 ],
                 [
                     'v' => 'verbose',
                     'e' => 'enable',
                     'c' => 'commit',
-                    'p' => 'pretty',
                 ]
             )
         );
@@ -81,9 +79,7 @@ class CliJsonLog implements CliCommandInterface
             switch ($command->name) {
                 case 'committable':
                     $verbose = !empty($command->options['verbose']);
-                    $logger = empty($command->options['pretty']) ?
-                        JsonLog::getInstance() :
-                        JsonLogPretty::getInstance();
+                    $logger = JsonLog::getInstance();
                     $response = $logger->committable(
                         !empty($command->options['enable']),
                         !empty($command->options['commit']),
