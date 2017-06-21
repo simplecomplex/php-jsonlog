@@ -47,6 +47,13 @@ declare(strict_types=1);
 
 // Work.------------------------------------------------------------------------
 
+use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\JsonLog\CliJsonLog;
 
-new CliJsonLog();
+//$cli = new CliJsonLog();
+
+$environment = CliEnvironment::getInstance();
+
+//$cli->executeCommandOnMatch($environment->command);
+
+$environment->echoMessage($environment->commandHelp('none'));

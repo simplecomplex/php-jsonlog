@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog;
 
+use SimpleComplex\Utils\CliCommandInterface;
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\CliCommand;
 
@@ -28,8 +29,13 @@ use SimpleComplex\Utils\CliCommand;
  *
  * @package SimpleComplex\JsonLog
  */
-class CliJsonLog
+class CliJsonLog implements CliCommandInterface
 {
+    /**
+     * @var string
+     */
+    const COMMAND_PROVIDER_ALIAS = 'json-log';
+
     /**
      * Uses CliEnvironment/CliCommand to detect and execute commands.
      *
@@ -46,6 +52,7 @@ class CliJsonLog
         // Declare supported commands.
         $environment->addCommandsAvailable(
             new CliCommand(
+                static::COMMAND_PROVIDER_ALIAS,
                 'committable',
                 'Check/enable JsonLog to write logs.',
                 [],
@@ -63,13 +70,14 @@ class CliJsonLog
                 ]
             )
         );
+    }
 
-        // Let environment map command; if first (non-option) console argument
-        // one of our commands.
-        $command = $environment->command;
-        if (!$command) {
-            $environment->echoMessage($environment->commandHelp('none'));
-        } else {
+    /**
+     * @param CliCommand|null $command
+     */
+    public function executeCommandOnMatch($command)
+    {
+        if ($command && $command->provider == static::COMMAND_PROVIDER_ALIAS) {
             switch ($command->name) {
                 case 'committable':
                     $verbose = !empty($command->options['verbose']);
@@ -94,13 +102,15 @@ class CliJsonLog
                             $msg .= "\n" . 'Code: ' . $response['code'];
                         }
                     }
+
+                    $environment = CliEnvironment::getInstance();
+
                     $environment->echoMessage($msg, !$success ? 'warning' : 'success', true);
                     break;
                 default:
-                    throw new \LogicException(
-                        CliEnvironment::class . ' mapped unknown command ' . $command->name . '.'
-                    );
+                    return;
             }
+            exit;
         }
     }
 }
