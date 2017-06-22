@@ -91,6 +91,20 @@ class CliJsonLog implements CliCommandInterface
      */
     public function executeCommand(CliCommand $command)
     {
+        $environment = CliEnvironment::getInstance();
+
+        if ($command->inputErrors) {
+            foreach ($command->inputErrors as $msg) {
+                $environment->echoMessage(
+                    $environment->format($msg, 'hangingIndent'),
+                    'notice'
+                );
+            }
+            // This command's help text.
+            $environment->echoMessage("\n" . $command);
+            exit;
+        }
+
         switch ($command->name) {
             case static::COMMAND_PROVIDER_ALIAS . '-committable':
                 $verbose = !empty($command->options['verbose']);
@@ -113,13 +127,16 @@ class CliJsonLog implements CliCommandInterface
                         $msg .= "\n" . 'Code: ' . $response['code'];
                     }
                 }
-                (CliEnvironment::getInstance())->echoMessage($msg, !$success ? 'warning' : 'success', true);
-                break;
+                $environment = CliEnvironment::getInstance();
+                $environment->echoMessage(
+                    $environment->format($msg, 'hangingIndent'),
+                    !$success ? 'warning' : 'success'
+                );
+                exit;
             default:
                 throw new \LogicException(
                     'Command named[' . $command->name . '] is not provided by class[' . get_class($this) . '].'
                 );
         }
-        exit;
     }
 }

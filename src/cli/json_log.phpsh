@@ -50,10 +50,11 @@ declare(strict_types=1);
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\JsonLog\CliJsonLog;
 
-//$cli = new CliJsonLog();
+// Declare JsonLog's CLI commands, and register them to CliEnvironment.
+new CliJsonLog();
 
-$environment = CliEnvironment::getInstance();
+// Let CliEnvironment listen to input and forward matched command
+// to it's provider (in this case CliJsonLog or CliEnvironment self).
+CliEnvironment::getInstance()->forwardMatchedCommand();
 
-//$cli->executeCommandOnMatch($environment->command);
-
-$environment->echoMessage($environment->commandHelp('none'));
+exit;

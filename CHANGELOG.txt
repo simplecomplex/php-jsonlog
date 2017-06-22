@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-06-22
+-------------------------------------
+- Cli commands revisited.
+
 SimpleComplex/JsonLog 1.x, 2017-06-21
 -------------------------------------
 - Simplified column name and/or sequence override.
