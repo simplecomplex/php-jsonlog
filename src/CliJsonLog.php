@@ -31,15 +31,13 @@ use SimpleComplex\Utils\CliCommand;
  */
 class CliJsonLog implements CliCommandInterface
 {
-    const CLASS_JSON_LOG = JsonLog::class;
-
     /**
      * @var string
      */
     const COMMAND_PROVIDER_ALIAS = 'json-log';
 
     /**
-     * Uses CliEnvironment/CliCommand to detect and execute commands.
+     * Registers JsonLog CliCommands at CliEnvironment.
      *
      * @throws \LogicException
      *      If executed in non-CLI mode.
@@ -51,7 +49,7 @@ class CliJsonLog implements CliCommandInterface
         }
 
         // Declare provided commands.
-        (CliEnvironment::getInstance())->addCommandsAvailable(
+        (CliEnvironment::getInstance())->registerCommands(
             new CliCommand(
                 $this,
                 static::COMMAND_PROVIDER_ALIAS . '-committable',
@@ -72,11 +70,27 @@ class CliJsonLog implements CliCommandInterface
     }
 
     /**
+     * To use class extending JsonLog, call [ExtendedJsonLog]::getInstance()
+     * before instantiating CliJsonLog.
+     *
      * @return \SimpleComplex\JsonLog\JsonLog
      */
     protected function getMainInstance()
     {
+        // getInstance() returns first JsonLog or JsonLog child
+        // instantiated via getInstance().
         return JsonLog::getInstance();
+    }
+
+
+    // CliCommandInterface.-----------------------------------------------------
+
+    /**
+     * @return string
+     */
+    public function commandProviderAlias(): string
+    {
+        return static::COMMAND_PROVIDER_ALIAS;
     }
 
     /**
@@ -89,7 +103,7 @@ class CliJsonLog implements CliCommandInterface
      *      If the command mapped by CliEnvironment
      *      isn't this provider's command.
      */
-    public function executeCommand(CliCommand $command)
+    public function executeCommand(CliCommand $command) /*: void*/
     {
         $environment = CliEnvironment::getInstance();
 

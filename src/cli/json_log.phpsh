@@ -50,7 +50,7 @@ declare(strict_types=1);
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\JsonLog\CliJsonLog;
 
-// Declare JsonLog's CLI commands, and register them to CliEnvironment.
+// Declares JsonLog's CLI commands, and registers them to CliEnvironment.
 new CliJsonLog();
 
 // Let CliEnvironment listen to input and forward matched command
