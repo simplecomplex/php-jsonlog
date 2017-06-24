@@ -259,10 +259,9 @@ class JsonLog extends AbstractLogger
      * @see JsonLogEvent::committable()
      *
      * @code
-     * # In CLI mode: Is JsonLog ready?
+     * # CLI
      * cd vendor/simplecomplex/json-log/src/cli
-     * # Execute 'committable' command.
-     * php JsonLogCli.phpsh committable --enable --commit --verbose
+     * php json_log.phpsh json-log -h
      * @endcode
      *
      * @param bool $enable

@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2017-06-24
+-------------------------------------
+- CLI minor issues.
+- The 'prettier' format shan't \u encode UTF-8 chars.
+
 SimpleComplex/JsonLog 1.x, 2017-06-22
 -------------------------------------
 - Cli commands revisited.

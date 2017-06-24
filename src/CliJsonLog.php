@@ -16,16 +16,17 @@ use SimpleComplex\Utils\CliCommand;
 /**
  * CLI only.
  *
- * Expose/execute JsonLog 'committable' command.
+ * Expose/execute JsonLog commands.
  *
- * Example:
- * @code
- * cd vendor/simplecomplex/json-log/src/cli
- * # Execute 'committable' command.
- * php json_log.phpsh json-log-committable --enable --commit --verbose --pretty
- * @endcode
+ * @see cli_json_log()
  *
  * @see JsonLog::committable()
+ *
+ * @code
+ * # CLI
+ * cd vendor/simplecomplex/json-log/src/cli
+ * php json_log.phpsh json-log -h
+ * @endcode
  *
  * @package SimpleComplex\JsonLog
  */
@@ -71,7 +72,7 @@ class CliJsonLog implements CliCommandInterface
 
     /**
      * To use class extending JsonLog, call [ExtendedJsonLog]::getInstance()
-     * before instantiating CliJsonLog.
+     * before instantiating this class.
      *
      * @return \SimpleComplex\JsonLog\JsonLog
      */
@@ -96,14 +97,15 @@ class CliJsonLog implements CliCommandInterface
     /**
      * @param CliCommand $command
      *
-     * @return void
-     *      Must exit.
+     * @return mixed
+     *      Return value of the executed command, if any.
+     *      May well exit.
      *
      * @throws \LogicException
      *      If the command mapped by CliEnvironment
      *      isn't this provider's command.
      */
-    public function executeCommand(CliCommand $command) /*: void*/
+    public function executeCommand(CliCommand $command)
     {
         $environment = CliEnvironment::getInstance();
 

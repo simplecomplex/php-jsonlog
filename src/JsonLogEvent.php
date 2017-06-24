@@ -956,7 +956,7 @@ class JsonLogEvent
                 $event['message'] = '';
                 $formatted = json_encode(
                     $event,
-                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT
+                    JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
                 );
                 return '' . preg_replace(
                         '/\n([ \t]+)(\"message\":[ ]*\")\"/',
