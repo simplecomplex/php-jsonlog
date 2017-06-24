@@ -129,6 +129,7 @@ class JsonLog extends AbstractLogger
      */
     public static function getInstance(...$constructorParams)
     {
+        // Can't use null ternary ?? apparantly doesn't work for static prop.
         if (!static::$instance) {
             static::$instance = new static(...$constructorParams);
         }
