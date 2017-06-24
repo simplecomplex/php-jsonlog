@@ -25,7 +25,7 @@ use SimpleComplex\Utils\CliCommand;
  * @code
  * # CLI
  * cd vendor/simplecomplex/json-log/src/cli
- * php json_log.phpsh json-log -h
+ * php cli.phpsh json-log -h
  * @endcode
  *
  * @package SimpleComplex\JsonLog

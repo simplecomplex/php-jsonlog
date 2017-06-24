@@ -262,7 +262,7 @@ class JsonLog extends AbstractLogger
      * @code
      * # CLI
      * cd vendor/simplecomplex/json-log/src/cli
-     * php json_log.phpsh json-log -h
+     * php cli.phpsh json-log -h
      * @endcode
      *
      * @param bool $enable
