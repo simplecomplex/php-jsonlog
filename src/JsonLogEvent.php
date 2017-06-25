@@ -845,8 +845,8 @@ class JsonLogEvent
     ];
 
     /**
-     * Uses ini:error_log respectively server's default web log (plus '/jsonlog')
-     * as fallback when config var 'path' not set.
+     * Uses ini:error_log respectively server's default web log
+     * (plus '/php-jsonlog') as fallback when config var 'path' not set.
      *
      * Attempts to log to error_log if failing to determine dir.
      *

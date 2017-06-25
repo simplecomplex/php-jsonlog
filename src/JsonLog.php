@@ -165,6 +165,8 @@ class JsonLog extends AbstractLogger
      *  - (str) format:     default|pretty|prettier
      *  - (bool|int) keep_enclosing_tag @todo: remove(?)
      *
+     * See also ../config-ini/json-log.ini
+     *
      * @var SectionedConfigInterface
      */
     public $config;

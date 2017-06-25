@@ -18,7 +18,7 @@ use SimpleComplex\Utils\CliCommand;
  *
  * Expose/execute JsonLog commands.
  *
- * @see cli_json_log()
+ * @see simplecomplex_json_log_cli()
  *
  * @see JsonLog::committable()
  *
