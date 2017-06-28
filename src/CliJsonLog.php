@@ -12,6 +12,7 @@ namespace SimpleComplex\JsonLog;
 use SimpleComplex\Utils\CliCommandInterface;
 use SimpleComplex\Utils\CliEnvironment;
 use SimpleComplex\Utils\CliCommand;
+use SimpleComplex\Utils\Dependency;
 
 /**
  * CLI only.
@@ -36,6 +37,11 @@ class CliJsonLog implements CliCommandInterface
      * @var string
      */
     const COMMAND_PROVIDER_ALIAS = 'json-log';
+
+    /**
+     * @var string
+     */
+    const CLASS_JSON_LOG = JsonLog::class;
 
     /**
      * Registers JsonLog CliCommands at CliEnvironment.
@@ -70,19 +76,6 @@ class CliJsonLog implements CliCommandInterface
         );
     }
 
-    /**
-     * To use class extending JsonLog, call [ExtendedJsonLog]::getInstance()
-     * before instantiating this class.
-     *
-     * @return \SimpleComplex\JsonLog\JsonLog
-     */
-    protected function getMainInstance()
-    {
-        // getInstance() returns first JsonLog or JsonLog child
-        // instantiated via getInstance().
-        return JsonLog::getInstance();
-    }
-
 
     // CliCommandInterface.-----------------------------------------------------
 
@@ -108,6 +101,7 @@ class CliJsonLog implements CliCommandInterface
     public function executeCommand(CliCommand $command)
     {
         $environment = CliEnvironment::getInstance();
+        $container = Dependency::container();
 
         if ($command->inputErrors) {
             foreach ($command->inputErrors as $msg) {
@@ -124,8 +118,17 @@ class CliJsonLog implements CliCommandInterface
         switch ($command->name) {
             case static::COMMAND_PROVIDER_ALIAS . '-committable':
                 $verbose = !empty($command->options['verbose']);
-                $logger = $this->getMainInstance();
-                $response = $logger->committable(
+                // Get JsonLog from dependency injection container, if set.
+                $json_log = null;
+                if (
+                    !$container->has('logger')
+                    || !($json_log = $container->get('logger'))
+                    || !is_a($json_log, static::CLASS_JSON_LOG)
+                ) {
+                    $json_log_class = static::CLASS_JSON_LOG;
+                    $json_log = new $json_log_class();
+                }
+                $response = $json_log->committable(
                     !empty($command->options['enable']),
                     !empty($command->options['commit']),
                     $verbose
@@ -143,7 +146,6 @@ class CliJsonLog implements CliCommandInterface
                         $msg .= "\n" . 'Code: ' . $response['code'];
                     }
                 }
-                $environment = CliEnvironment::getInstance();
                 $environment->echoMessage(
                     $environment->format($msg, 'hangingIndent'),
                     !$success ? 'warning' : 'success'

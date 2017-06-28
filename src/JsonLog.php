@@ -315,10 +315,11 @@ class JsonLog extends AbstractLogger
             ) {
                 // Append to log file.
                 $event->commit(
-                // To JSON.
+                    // To JSON.
                     $event->format(
-                    // Compose.
-                        $event->get()
+                        // Compose.
+                        $event->get(),
+                        '' . $this->config->get(static::CONFIG_SECTION, 'format', 'default')
                     )
                 );
                 if ($getResponse) {

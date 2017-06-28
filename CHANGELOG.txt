@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2017-06-28
+-------------------------------------
+- Use dependency injection container instead of getInstance() when possible.
+- Convert relative path to absolute, and update configuration.
+
 SimpleComplex/JsonLog 1.x, 2017-06-24
 -------------------------------------
 - CLI minor issues.
