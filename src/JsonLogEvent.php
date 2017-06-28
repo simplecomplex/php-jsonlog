@@ -863,7 +863,7 @@ class JsonLogEvent
     {
         $path = '' . $this->proxy->config->get(static::CONFIG_SECTION, 'path', '');
         if ($path) {
-            if ($path{0} == '.') {
+            if ($path{0} !== '/') {
                 // Convert relative to absolute.
                 $path = \SimpleComplex\Utils\Utils::getInstance()->resolvePath($path);
             }
