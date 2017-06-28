@@ -52,6 +52,7 @@ declare(strict_types=1);
 
 // Work.------------------------------------------------------------------------
 use SimpleComplex\Utils\CliEnvironment;
+use SimpleComplex\Utils\Dependency;
 use SimpleComplex\JsonLog\CliJsonLog;
 
 /**
@@ -72,6 +73,38 @@ use SimpleComplex\JsonLog\CliJsonLog;
  */
 function simplecomplex_json_log_cli()
 {
+    $container = Dependency::container();
+    if (class_exists('\\SimpleComplex\\Cache\\CacheBroker')) {
+        Dependency::genericSet('cache-broker', function() {
+            return new \SimpleComplex\Cache\CacheBroker();
+        });
+    }
+    if (class_exists('\\SimpleComplex\\Config\\Config')) {
+        Dependency::genericSet('config', function() {
+            return new \SimpleComplex\Config\Config('global');
+        });
+    }
+    Dependency::genericSet('logger', function() use ($container) {
+        return new \SimpleComplex\JsonLog\JsonLog($container->has('config') ? $container->get('config') : null);
+    });
+    if (class_exists('\\SimpleComplex\\Inspect\\Inspect')) {
+        Dependency::genericSet('inspector', function() use ($container) {
+            return new \SimpleComplex\Inspect\Inspect($container->has('config') ? $container->get('config') : null);
+        });
+    }
+
+    set_exception_handler(function(\Throwable $throwable) use ($container) {
+        $container = Dependency::container();
+        $trace = null;
+        if ($container->has('inspector')) {
+            $trace = '' . $container->get('inspector')->trace($throwable);
+        }
+        if ($container->has('logger')) {
+            $container->get('logger')->error($trace ?? $throwable);
+        }
+        echo ($trace ?? $throwable) . "\n"; exit;
+    });
+
     // Declares JsonLog's CLI commands, and registers them to CliEnvironment.
     new CliJsonLog();
 
