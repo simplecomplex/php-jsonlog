@@ -67,12 +67,23 @@ class JsonLog extends AbstractLogger
         // Sufficiently severe to log?
         $severity = Utils::getInstance()->logLevelToInteger($level);
 
+        $config_remembered = false;
+
         if ($this->threshold == -1) {
+            // Prime sectioned config; load the whole section into memory.
+            $this->config->remember(static::CONFIG_SECTION);
+            $config_remembered = true;
             $this->threshold = (int) $this->config->get(static::CONFIG_SECTION, 'threshold', static::THRESHOLD_DEFAULT);
         }
         // Less is more.
         if ($severity > $this->threshold) {
+            // Relieve config memory.
+            if ($config_remembered) {
+                $this->config->forget(static::CONFIG_SECTION);
+            }
             return;
+        } elseif (!$config_remembered) {
+            $this->config->remember(static::CONFIG_SECTION);
         }
 
 
@@ -109,6 +120,8 @@ class JsonLog extends AbstractLogger
                 '' . $this->config->get(static::CONFIG_SECTION, 'format', 'default')
             )
         );
+        // Relieve config memory.
+        $this->config->forget(static::CONFIG_SECTION);
     }
 
 
