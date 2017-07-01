@@ -101,6 +101,9 @@ class CliJsonLog implements CliCommandInterface
     public function executeCommand(CliCommand $command)
     {
         $environment = CliEnvironment::getInstance();
+        /**
+         * @see simplecomplex_json_log_cli()
+         */
         $container = Dependency::container();
 
         if ($command->inputErrors) {
