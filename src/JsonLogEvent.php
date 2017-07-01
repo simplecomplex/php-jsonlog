@@ -958,7 +958,8 @@ class JsonLogEvent
             case 'pretty':
                 return json_encode(
                     $event,
-                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_PRETTY_PRINT
+                    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT |
+                    JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
                 );
             case 'prettier':
                 // Move 'message' to bottom, no matter what COLUMNS_EVENT says.
@@ -968,7 +969,7 @@ class JsonLogEvent
                 $event['message'] = '';
                 $formatted = json_encode(
                     $event,
-                    JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
                 );
                 return '' . preg_replace(
                         '/\n([ \t]+)(\"message\":[ ]*\")\"/',
