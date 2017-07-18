@@ -14,8 +14,8 @@
     "require": {
         "php": ">=7.0",
         "psr/log": "^1.0",
-        "simplecomplex/utils": "^1.0",
-        "simplecomplex/config": "^1.0"
+        "simplecomplex/utils": "^1.0 || dev-develop",
+        "simplecomplex/config": "^1.0 || dev-develop"
     },
     "autoload": {
         "psr-4": {
