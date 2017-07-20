@@ -10,13 +10,15 @@ declare(strict_types=1);
 // Include Composer autoloader - re-usable snippet.-----------------------------
 (function()
 {
+    $path = getcwd();
+    $dir = dirname($path);
     // Executed in [package] dir.
-    if (basename(dirname(dirname($path = getcwd()))) == 'vendor') {
+    if (basename(dirname($dir)) == 'vendor') {
         require '../../autoload.php';
         return;
     }
     // Executed in [package]/src/cli.
-    elseif (basename($path) == 'cli' && basename(dirname($path)) == 'src') {
+    elseif (basename($path) == 'cli' && basename($dir) == 'src') {
         require '../../../../autoload.php';
         return;
     }
@@ -26,7 +28,7 @@ declare(strict_types=1);
     if (file_exists($vendor_dir) && is_dir($vendor_dir)) {
         $vendor_path = $vendor_dir;
     } else {
-        $iter = new \FilesystemIterator('', \FilesystemIterator::FOLLOW_SYMLINKS);
+        $iter = new \FilesystemIterator($path, \FilesystemIterator::FOLLOW_SYMLINKS);
         foreach ($iter as $item) {
             if ($item->isDir()) {
                 $path = $item->getPathName();
