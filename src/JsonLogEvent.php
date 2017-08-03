@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace SimpleComplex\JsonLog;
 
+use SimpleComplex\Utils\Utils;
+
 /**
  * JsonLog event.
  *
@@ -1036,6 +1038,9 @@ class JsonLogEvent
 
         $is_cli = \SimpleComplex\Utils\CliEnvironment::cli();
 
+        $utils = Utils::getInstance();
+        $group_write = false;
+
         $path = $this->getPath();
         if (!$path) {
             $msgs = 'Cannot determine path.';
@@ -1056,6 +1061,7 @@ class JsonLogEvent
                                 . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
                         } else {
                             $mode = fileperms($ancestor_path);
+                            $group_write = $utils->isFileGroupWrite($mode);
                         }
                         break;
                     }
@@ -1074,13 +1080,9 @@ class JsonLogEvent
                                 . (!$is_cli ? '' : ('[' . $path . ']')) . '.';
                             // Setting mode - chmod'ing - upon directory creation only seems to be
                             // necessary when mode is group-write.
-                            // Group-write is second-to-last octal digit is 7.
-                            $mode_str = decoct($mode);
-                            if ($mode_str{strlen($mode_str) - 2} == '7') {
-                                if (!chmod($path, $mode)) {
-                                    $msgs[] = 'Failed to chmod'
-                                        . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
-                                }
+                            if ($group_write && !chmod($path, $mode)) {
+                                $msgs[] = 'Failed to chmod'
+                                    . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
                             }
                         }
                     }
@@ -1089,6 +1091,8 @@ class JsonLogEvent
         } elseif (!is_dir($path)) {
             $code = 20;
             $msgs[] = 'Path is not a directory' . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
+        } else {
+            $group_write = $utils->isFileGroupWrite(fileperms($path));
         }
 
         if (!$code) {
@@ -1122,6 +1126,10 @@ class JsonLogEvent
                         $success = true;
                         $msgs[] = 'Created the file' . (!$is_cli ? '' : ('[' . $file . ']')) . '.';
                     }
+                }
+                if ($group_write && !chmod($file, 0660)) {
+                    $msgs[] = 'Failed to chmod'
+                        . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
                 }
             }
         }
