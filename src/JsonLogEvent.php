@@ -138,6 +138,7 @@ class JsonLogEvent
         'subType' => 'subtype',
         'level' => 'level',
         'code' => 'code',
+        'exception' => 'exception',
         'truncation' => 'trunc',
         'user' => 'user',
     ];
@@ -165,6 +166,7 @@ class JsonLogEvent
         'clientIp',
         'userAgent',
         'correlationId',
+        'exception',
         'truncation',
         'user',
     ];
@@ -623,13 +625,14 @@ class JsonLogEvent
                     if (strpos($msg, $prefix . 'exception' . $suffix) !== false) {
                         $msg = str_replace(
                             $prefix . 'exception' . $suffix,
-                            '(' . $code . ') @' . $xcptn->getFile() . ':' . $xcptn->getLine()
+                            get_class($xcptn) . '(' . $code . ')@' . $xcptn->getFile() . ':' . $xcptn->getLine()
                             . "\n" . addcslashes($xcptn->getMessage(), "\0..\37"),
                             $msg
                         );
                     }
                 }
-                unset($context['exception'], $xcptn, $code);
+                // Don't unset context[exception]; exception() needs it.
+                unset($xcptn, $code);
             }
 
             foreach ($context as $key => $val) {
@@ -816,6 +819,24 @@ class JsonLogEvent
             }
         }
         return 0;
+    }
+
+    /**
+     * Exception class name, if context has exception bucket.
+     *
+     * @return string
+     */
+    public function exception() : string
+    {
+        if (!empty($this->context['exception'])) {
+            $xcptn = $this->context['exception'];
+            if (is_object($xcptn)) {
+                // Namespace backslash to forward, because searching
+                // for backslashed value might be a pain.
+                return str_replace('\\', '/', get_class($xcptn));
+            }
+        }
+        return '';
     }
 
     /**

@@ -1,3 +1,9 @@
+SimpleComplex/JsonLog 1.x, 2017-08-08
+-------------------------------------
+- New event column 'exception', which provides exception class name
+  when 'exception' passed in context.
+- Fixed that message() shan't unset context[exception].
+
 SimpleComplex/JsonLog 1.x, 2017-08-03
 -------------------------------------
 - committable() make dir and file group-write if ancestor path is group-write.
