@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-08-10
+-------------------------------------
+- Message 'exception' context replacer should also render previous exception.
+
 SimpleComplex/JsonLog 1.x, 2017-08-08
 -------------------------------------
 - New event column 'exception', which provides exception class name

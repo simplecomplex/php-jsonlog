@@ -623,10 +623,17 @@ class JsonLogEvent
                     }
 
                     if (strpos($msg, $prefix . 'exception' . $suffix) !== false) {
+                        $prvs = '';
+                        if (($previous = $xcptn->getPrevious())) {
+                            $prvs = "\n" . 'Previous: '
+                                . get_class($previous) . '(' . $previous->getCode() . ')@' . $previous->getFile() . ':'
+                                . $previous->getLine() . "\n" . addcslashes($previous->getMessage(), "\0..\37");
+                        }
                         $msg = str_replace(
                             $prefix . 'exception' . $suffix,
                             get_class($xcptn) . '(' . $code . ')@' . $xcptn->getFile() . ':' . $xcptn->getLine()
-                            . "\n" . addcslashes($xcptn->getMessage(), "\0..\37"),
+                            . "\n" . addcslashes($xcptn->getMessage(), "\0..\37")
+                            . $prvs,
                             $msg
                         );
                     }
