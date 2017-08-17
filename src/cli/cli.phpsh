@@ -90,7 +90,7 @@ function simplecomplex_json_log_cli()
         return new \SimpleComplex\JsonLog\JsonLog($container->has('config') ? $container->get('config') : null);
     });
     if (class_exists('\\SimpleComplex\\Inspect\\Inspect')) {
-        Dependency::genericSet('inspector', function() use ($container) {
+        Dependency::genericSet('inspect', function() use ($container) {
             return new \SimpleComplex\Inspect\Inspect($container->has('config') ? $container->get('config') : null);
         });
     }
@@ -101,8 +101,8 @@ function simplecomplex_json_log_cli()
         try {
             $container = Dependency::container();
             $trace = null;
-            if ($container->has('inspector')) {
-                $trace = '' . $container->get('inspector')->trace($throwable);
+            if ($container->has('inspect')) {
+                $trace = '' . $container->get('inspect')->trace($throwable);
             }
             if ($container->has('logger')) {
                 $container->get('logger')->error($trace ?? $throwable);
