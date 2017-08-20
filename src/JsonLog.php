@@ -347,4 +347,51 @@ class JsonLog extends AbstractLogger
 
         return $result;
     }
+
+    /**
+     * Truncate current log file.
+     *
+     * Only allowed in CLI mode.
+     * @see CliJsonLog
+     *
+     * @see JsonLogEvent::truncate()
+     *
+     * @code
+     * # CLI
+     * cd vendor/simplecomplex/json-log/src/cli
+     * php cli.phpsh json-log -h
+     * @endcode
+     *
+     * @return string
+     *      Non-empty: path+filename; succeeded.
+     *      Empty: failed.
+     */
+    public function truncate() : string
+    {
+        // Init.----------------------------------------------------------------
+        // Load dependencies on demand.
+        if (!$this->config) {
+            $this->setConfig(EnvSectionedConfig::getInstance());
+        }
+        if (!$this->unicode) {
+            $this->unicode = Unicode::getInstance();
+        }
+        if (!$this->sanitize) {
+            $this->sanitize = Sanitize::getInstance();
+        }
+
+        // Business.------------------------------------------------------------
+
+        $event_class = static::CLASS_JSON_LOG_EVENT;
+        /**
+         * @var JsonLogEvent $event
+         */
+        $event = new $event_class(
+            $this,
+            Utils::getInstance()->logLevelToString(LOG_DEBUG),
+            'truncate'
+        );
+
+        return $event->truncate();
+    }
 }

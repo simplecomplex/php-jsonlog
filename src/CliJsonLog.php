@@ -72,6 +72,14 @@ class CliJsonLog implements CliCommandInterface
                     'e' => 'enable',
                     'c' => 'commit',
                 ]
+            ),
+            new CliCommand(
+                $this,
+                static::COMMAND_PROVIDER_ALIAS . '-truncate',
+                'Truncate current JsonLog log file.',
+                [],
+                [],
+                []
             )
         );
     }
@@ -152,6 +160,39 @@ class CliJsonLog implements CliCommandInterface
                 $environment->echoMessage(
                     $environment->format($msg, 'hangingIndent'),
                     !$success ? 'warning' : 'success'
+                );
+                exit;
+            case static::COMMAND_PROVIDER_ALIAS . '-truncate':
+                // Request confirmation, unless user used the --yes/-y option.
+                if (
+                    !$command->preConfirmed
+                    && !$environment->confirm(
+                        'Truncate current JsonLog log file? Type \'yes\' or \'y\' to continue:',
+                        ['yes', 'y'],
+                        '',
+                        'Aborted truncating JsonLog log file.'
+                    )
+                ) {
+                    exit;
+                }
+                // Get JsonLog from dependency injection container, if set.
+                $json_log = null;
+                if (
+                    !$container->has('logger')
+                    || !($json_log = $container->get('logger'))
+                    || !is_a($json_log, static::CLASS_JSON_LOG)
+                ) {
+                    $json_log_class = static::CLASS_JSON_LOG;
+                    $json_log = new $json_log_class();
+                }
+                $path_file = $json_log->truncate();
+                $msg = !$path_file ? 'Failed to truncate JsonLog current log file.' :
+                    ('Truncated JsonLog current log file: ' . dirname($path_file)
+                        . '/' . $environment->format(basename($path_file), 'emphasize')
+                    );
+                $environment->echoMessage(
+                    $environment->format($msg, 'hangingIndent'),
+                    !$path_file ? 'warning' : 'success'
                 );
                 exit;
             default:

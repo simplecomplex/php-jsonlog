@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-08-20
+-------------------------------------
+- New CLI command 'truncate'.
+
 SimpleComplex/JsonLog 1.x, 2017-08-10
 -------------------------------------
 - Message 'exception' context replacer should also render previous exception.

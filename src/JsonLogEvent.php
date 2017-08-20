@@ -1173,4 +1173,36 @@ class JsonLogEvent
             'code' => $code,
         ];
     }
+
+    /**
+     * Truncate current log file.
+     *
+     * @return string
+     *      Non-empty: path+filename; succeeded.
+     *      Empty: failed.
+     *
+     * @throws \RuntimeException
+     *      If not in CLI mode.
+     */
+    public function truncate() : string
+    {
+        if (!\SimpleComplex\Utils\CliEnvironment::cli()) {
+            throw new \RuntimeException('JsonLog truncate is only allowed in CLI mode.');
+        }
+
+        $file = $this->getFile();
+        if (!$file) {
+            return '';
+        }
+
+        // Lock (write, doesn't prevent reading).
+        $success = !!file_put_contents($file, "\n", LOCK_EX);
+        // If failure: log filing error to host's default log.
+        if (!$success) {
+            error_log('jsonlog, site ID[' . $this->siteId(true) . '], failed to truncate file[' . $file . '].');
+            return '';
+        }
+
+        return $file;
+    }
 }
