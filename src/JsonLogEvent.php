@@ -1006,7 +1006,9 @@ class JsonLogEvent
                         "\n" . '$1$2' . "\n" . $message . "\n" . '$1"',
                         $formatted,
                         1
-                    );
+                    )
+                    // Divide 'prettier' (non-parsable) events clearly.
+                    . "\n########################################";
         }
         return json_encode(
             $event,
