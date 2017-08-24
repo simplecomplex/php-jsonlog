@@ -157,6 +157,7 @@ class CliJsonLog implements CliCommandInterface
                         $msg .= "\n" . 'Code: ' . $response['code'];
                     }
                 }
+                // Do not respect 'silent', do print even success.
                 $environment->echoMessage(
                     $environment->format($msg, 'hangingIndent'),
                     !$success ? 'warning' : 'success'

@@ -340,7 +340,7 @@ class JsonLog extends AbstractLogger
                     )
                 );
                 if ($getResponse) {
-                    $result['message'] .= ' Committed dummy event.';
+                    $result['message'] .= "\n" . 'Committed dummy event.';
                 }
             }
         }
