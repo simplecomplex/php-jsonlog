@@ -1008,7 +1008,7 @@ class JsonLogEvent
                         1
                     )
                     // Divide 'prettier' (non-parsable) events clearly.
-                    . "\n########################################";
+                    . "\n////////////////////////////////////////////////////////////////////////////////";
         }
         return json_encode(
             $event,
