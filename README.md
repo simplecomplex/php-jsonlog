@@ -1,6 +1,6 @@
 ## JsonLog ##
 
-#### Requirements ####
+### Requirements ###
 
 - PHP >=7.0
 - [PSR-3 Log](https://github.com/php-fig/log)
