@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
-use SimpleComplex\Config\SectionedConfigInterface;
+use SimpleComplex\Config\Interfaces\SectionedConfigInterface;
 use SimpleComplex\Config\EnvSectionedConfig;
 use SimpleComplex\Utils\Utils;
 use SimpleComplex\Utils\Unicode;
