@@ -1,5 +1,20 @@
 ## JsonLog ##
 
+### CLI commands ###
+
+```bash
+# List all json-log commands and their help.
+php cli.phpsh json-log -h
+# One command's help.
+php cli.phpsh json-log-xxx -h
+
+# Check/enable JsonLog to write logs.
+php cli.phpsh json-log-committable
+
+# Truncate current log file.
+php cli.phpsh json-log-truncate
+```
+
 ### Requirements ###
 
 - PHP >=7.0
