@@ -682,6 +682,8 @@ class JsonLogEvent
                 // Message will get longer when JSON encoded, because of hex encoding of
                 // <>&" chars.
                 $truncate *= 7 / 8;
+                // Must be integer.
+                $truncate = (int) floor($truncate);
             }
             static::$truncate = $truncate;
         }
