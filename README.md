@@ -1,5 +1,10 @@
 ## JsonLog ##
 
+#### Dependency injection container ID: logger ####
+
+Recommendation: access (and thus instantiate) JsonLog via DI container ID 'logger'.  
+See [SimpleComplex Utils](https://github.com/simplecomplex/php-utils) ``` Dependency ```.
+
 ### CLI commands ###
 
 ```bash
