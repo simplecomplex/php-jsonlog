@@ -26,3 +26,7 @@ php cli.phpsh json-log-truncate
 - [PSR-3 Log](https://github.com/php-fig/log)
 - [SimpleComplex Config](https://github.com/simplecomplex/php-config)
 - [SimpleComplex Utils](https://github.com/simplecomplex/php-utils)
+
+##### Suggestions #####
+
+- [SimpleComplex Inspect](https://github.com/simplecomplex/inspect) (CLI features require it)
