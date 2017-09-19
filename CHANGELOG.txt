@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2017-09-19
+-------------------------------------
+- Committable use Utils::ensurePath() to create log dir.
+
 SimpleComplex/JsonLog 1.x, 2017-09-04
 -------------------------------------
 - Truncate must be integer (bugfix).

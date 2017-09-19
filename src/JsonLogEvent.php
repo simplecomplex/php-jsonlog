@@ -1103,19 +1103,14 @@ class JsonLogEvent
                         $code = 12;
                         $msgs[] = 'Cannot determine file mode' . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
                     } else {
-                        $make = mkdir($path, $mode, true);
-                        if (!$make) {
+                        try {
+                            $utils->ensurePath($path, $mode);
+                            $msgs[] = 'Created path' . (!$is_cli ? '' : ('[' . $path . ']')) . '.';
+                        } catch (\Throwable $xcptn) {
                             $code = 13;
                             $msgs[] = 'Failed to create path' . (!$is_cli ? '' : ('[' . $path . ']')) . '.';
-                        } else {
-                            $msgs[] = 'Created path'
-                                . (!$is_cli ? '' : ('[' . $path . ']')) . '.';
-                            // Setting mode - chmod'ing - upon directory creation only seems to be
-                            // necessary when mode is group-write.
-                            if ($group_write && !chmod($path, $mode)) {
-                                $msgs[] = 'Failed to chmod'
-                                    . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
-                            }
+                            $msgs[] = get_class($xcptn) . '(' . $xcptn->getCode() . ')@' . $xcptn->getFile() . ':'
+                                . $xcptn->getLine() . ' ' . addcslashes($xcptn->getMessage(), "\0..\37");
                         }
                     }
                 }
