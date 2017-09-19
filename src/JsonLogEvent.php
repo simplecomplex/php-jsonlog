@@ -1110,7 +1110,7 @@ class JsonLogEvent
                             $code = 13;
                             $msgs[] = 'Failed to create path' . (!$is_cli ? '' : ('[' . $path . ']')) . '.';
                             $msgs[] = get_class($xcptn) . '(' . $xcptn->getCode() . ')@' . $xcptn->getFile() . ':'
-                                . $xcptn->getLine() . ' ' . addcslashes($xcptn->getMessage(), "\0..\37");
+                                . $xcptn->getLine() . ': ' . addcslashes($xcptn->getMessage(), "\0..\37");
                         }
                     }
                 }
