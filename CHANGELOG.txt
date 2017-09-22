@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2017-09-22
+-------------------------------------
+- Config and locale-text no longer risk that dupe key scalar values become array
+  Removed warnings from documentation.
+
 SimpleComplex/JsonLog 1.x, 2017-09-19
 -------------------------------------
 - Committable use Utils::ensurePath() to create log dir.
