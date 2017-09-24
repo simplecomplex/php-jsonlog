@@ -3,6 +3,7 @@ SimpleComplex/JsonLog 1.x, 2017-09-24
 - Decreased default truncation to 32.
 - New column 'session'.
 - Removed keep_enclosing_tag options; Inspect no longer produces HTML.
+- Release 1.0.
 
 SimpleComplex/JsonLog 1.x, 2017-09-22
 -------------------------------------
