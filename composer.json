@@ -17,6 +17,9 @@
         "simplecomplex/utils": "^1.0 || dev-develop",
         "simplecomplex/config": "^1.0 || dev-develop"
     },
+    "suggest": {
+        "simplecomplex/inspect": "CLI features do NOT work without Inspect. And great for logging; better variable dumps and traces."
+    },
     "autoload": {
         "psr-4": {
             "SimpleComplex\\JsonLog\\": "src/"
