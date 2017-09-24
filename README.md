@@ -17,7 +17,7 @@ All column values are string, except the _code_ column.
 ##### Event #####
 - **message**
 - **@timestamp**: ISO-8601
-- **message_id**: some-what random ID, using site ID as salt
+- **message_id**: fairly random ID, using site ID as salt
 - correlation_id: set via ```$context```
 - **subtype**: set via ```$context```, default ```component```
 - **level**: ```emergency|alert|critical|error|warning|notice|info|debug```
