@@ -20,9 +20,6 @@ use SimpleComplex\Utils\Utils;
  */
 class JsonLogEvent
 {
-
-    // @todo: introduce new 'session' column, which can do the same as Inspect used to do: session-id:request-no (no page-load-no)
-
     /**
      * Config var default section.
      *
@@ -35,7 +32,7 @@ class JsonLogEvent
      *
      * @var int
      */
-    const TRUNCATE_DEFAULT = 64;
+    const TRUNCATE_DEFAULT = 32;
 
     /**
      * Overridable by 'type' config var.
@@ -141,6 +138,7 @@ class JsonLogEvent
         'exception' => 'exception',
         'truncation' => 'trunc',
         'user' => 'user',
+        'session' => 'session',
     ];
 
     /**
@@ -169,6 +167,7 @@ class JsonLogEvent
         'exception',
         'truncation',
         'user',
+        'session',
     ];
 
     /**
@@ -647,17 +646,6 @@ class JsonLogEvent
             }
         }
 
-        // Strip tags if message starts with < (Inspect logs in tag).
-        // @todo: check how kibana displays HTML in message.
-        /*
-        if (
-            !$this->proxy->config->get(static::CONFIG_SECTION, 'keep_enclosing_tag')
-            && $msg{0} === '<'
-        ) {
-            $msg = strip_tags($msg);
-        }
-        */
-
         // Escape null byte.
         $msg = str_replace("\0", '_NUL_', $msg);
 
@@ -733,11 +721,14 @@ class JsonLogEvent
     }
 
     /**
+     * Uses site ID as salt.
+     *
      * @return string
      */
     public function eventId() : string
     {
         return uniqid(
+            // Salt.
             $this->siteId(),
             true
         );
@@ -857,6 +848,16 @@ class JsonLogEvent
     {
         // Stringify, might be object.
         return '' . ($this->context['user'] ?? '');
+    }
+
+    /**
+     * Uses context 'session'; default empty.
+     *
+     * @return string
+     */
+    public function session() : string
+    {
+        return '' . ($this->context['session'] ?? '');
     }
 
 

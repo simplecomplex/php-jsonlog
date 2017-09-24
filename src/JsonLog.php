@@ -40,6 +40,7 @@ class JsonLog extends AbstractLogger
      *
      * @see JsonLogEvent
      * @see JsonLogEvent::THRESHOLD_DEFAULT
+     * @see \Psr\Log\LogLevel
      *
      * @param mixed $level
      *      String (word): value as defined by Psr\Log\LogLevel class constants.
@@ -173,17 +174,16 @@ class JsonLog extends AbstractLogger
     /**
      * Config vars, and their effective defaults:
      *  - (int) threshold:  warning (THRESHOLD_DEFAULT)
-     *  - (int) truncate:   64 (TRUNCATE_DEFAULT)
+     *  - (int) truncate:   32 (TRUNCATE_DEFAULT)
      *  - (str) siteid:     a dir name in document root, or 'unknown'
      *  - (str) type:       'webapp' (TYPE_DEFAULT)
      *  - (str) path:       default webserver log dir + /jsonlog
-     *  - (str) file_time:  'Ymd'; date() pattern
+     *  - (str) file_time:  'Ymd'; date() pattern or empty or 'none'
      *  - (str) canonical:  empty
      *  - (str) tags:       empty; comma-separated list
      *  - (str) reverse_proxy_addresses:    empty; comma-separated list
      *  - (str) reverse_proxy_header:       HTTP_X_FORWARDED_FOR
      *  - (str) format:     default|pretty|prettier
-     *  - (bool|int) keep_enclosing_tag @todo: remove(?)
      *
      * See also ../config-ini/json-log.ini
      *
