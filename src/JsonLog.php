@@ -54,7 +54,7 @@ class JsonLog extends AbstractLogger
      * @throws \Psr\Log\InvalidArgumentException
      *      Propagated; invalid level argument.
      */
-    public function log($level, $message, array $context = []) /*: void*/
+    public function log($level, $message, array $context = [])/*: void*/
     {
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
@@ -263,7 +263,7 @@ class JsonLog extends AbstractLogger
      *
      * @return void
      */
-    public function setConfig(SectionedConfigInterface $config) /*: void*/
+    public function setConfig(SectionedConfigInterface $config)/*: void*/
     {
         // Reset cross event vars, if shifting to a new configuration.
         if ($this->config) {
@@ -366,7 +366,7 @@ class JsonLog extends AbstractLogger
      *      Non-empty: path+filename; succeeded.
      *      Empty: failed.
      */
-    public function truncate() : string
+    public function truncate(): string
     {
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.

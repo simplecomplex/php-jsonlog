@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2017-09-27
+-------------------------------------
+- 'host' method provide host name _and_ port.
+- Code format; method signature return type.
+
 SimpleComplex/JsonLog 1.x, 2017-09-24
 -------------------------------------
 - Decreased default truncation to 32.

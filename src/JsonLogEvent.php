@@ -258,7 +258,7 @@ class JsonLogEvent
      *
      * @return array
      */
-    public function get() : array
+    public function get(): array
     {
         $skip_empty = static::SKIP_EMPTY_COLUMNS;
 
@@ -337,7 +337,7 @@ class JsonLogEvent
      *      Values: site|request|event
      * @return array
      */
-    public static function columnMap(string $scope) : array
+    public static function columnMap(string $scope): array
     {
         switch ($scope) {
             case 'event':
@@ -358,12 +358,14 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function type() : string
+    public function type(): string
     {
         return '' . $this->proxy->config->get(static::CONFIG_SECTION, 'type', static::TYPE_DEFAULT);
     }
 
     /**
+     * Host name and port.
+     *
      * This implementation uses what potentially is the server name provided
      * by the client; overriding in sub class is recommended.
      *
@@ -374,10 +376,15 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function host() : string
+    public function host(): string
     {
-        return empty($_SERVER['SERVER_NAME']) ? '' :
-            $this->proxy->sanitize->unicodePrintable($_SERVER['SERVER_NAME']);
+        return empty($_SERVER['SERVER_NAME']) ? '' : (
+            $this->proxy->sanitize->unicodePrintable($_SERVER['SERVER_NAME'])
+            . (
+            empty($_SERVER['SERVER_PORT']) || !ctype_digit('' . $_SERVER['SERVER_PORT']) ? '' :
+                (':' . $_SERVER['SERVER_PORT'])
+            )
+        );
     }
 
     /**
@@ -398,7 +405,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function siteId($noSave = false) : string
+    public function siteId($noSave = false): string
     {
         $site_id = static::$siteId;
         if (!$site_id) {
@@ -449,7 +456,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function canonical() : string
+    public function canonical(): string
     {
         return '' . $this->proxy->config->get(static::CONFIG_SECTION, 'canonical', '');
     }
@@ -457,7 +464,7 @@ class JsonLogEvent
     /**
      * @return string
      */
-    public function tags() : string
+    public function tags(): string
     {
         $tags = $this->proxy->config->get(static::CONFIG_SECTION, 'tags');
 
@@ -472,7 +479,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function method() : string
+    public function method(): string
     {
         return !empty($_SERVER['REQUEST_METHOD']) ?
             preg_replace('/[^A-Z]/', '', $_SERVER['REQUEST_METHOD']) : 'cli';
@@ -483,7 +490,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function requestUri() : string
+    public function requestUri(): string
     {
         if (isset($_SERVER['REQUEST_URI'])) {
             return $this->proxy->sanitize->unicodePrintable($_SERVER['REQUEST_URI']);
@@ -497,7 +504,7 @@ class JsonLogEvent
     /**
      * @return string
      */
-    public function referer() : string
+    public function referer(): string
     {
         return empty($_SERVER['HTTP_REFERER']) ? '' :
             $this->proxy->unicode->substr(
@@ -516,7 +523,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function clientIp() : string
+    public function clientIp(): string
     {
         $client_ip = !empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
         if ($client_ip) {
@@ -564,7 +571,7 @@ class JsonLogEvent
     /**
      * @return string
      */
-    public function userAgent() : string
+    public function userAgent(): string
     {
         return empty($_SERVER['HTTP_USER_AGENT']) ? '' :
             $this->proxy->unicode->substr(
@@ -589,7 +596,7 @@ class JsonLogEvent
     /**
      * @return string
      */
-    public function message() : string
+    public function message(): string
     {
         // Get raw message, and clear instance var to save memory.
         $msg = $this->messageRaw;
@@ -687,7 +694,7 @@ class JsonLogEvent
     /**
      * @return string
      */
-    public function truncation() : string
+    public function truncation(): string
     {
         return !$this->lengthTruncated ? '' : ('' . $this->lengthPrepared . '/' . $this->lengthTruncated);
     }
@@ -704,7 +711,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function timestamp() : string
+    public function timestamp(): string
     {
         // PHP formats iso 8601 with timezone; we use UTC Z.
         $millis = round(microtime(true) * 1000);
@@ -725,7 +732,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function eventId() : string
+    public function eventId(): string
     {
         return uniqid(
             // Salt.
@@ -740,7 +747,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function correlationId() : string
+    public function correlationId(): string
     {
         $context =& $this->context;
         if ($context) {
@@ -761,7 +768,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function subType() : string
+    public function subType(): string
     {
         $context =& $this->context;
         if ($context) {
@@ -780,7 +787,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function level() : string
+    public function level(): string
     {
         return $this->level;
     }
@@ -790,7 +797,7 @@ class JsonLogEvent
      *
      * @return integer
      */
-    public function code() : int
+    public function code(): int
     {
         $context =& $this->context;
         if ($context) {
@@ -826,7 +833,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function exception() : string
+    public function exception(): string
     {
         if (!empty($this->context['exception'])) {
             $xcptn = $this->context['exception'];
@@ -844,7 +851,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function user() : string
+    public function user(): string
     {
         // Stringify, might be object.
         return '' . ($this->context['user'] ?? '');
@@ -855,7 +862,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function session() : string
+    public function session(): string
     {
         return '' . ($this->context['session'] ?? '');
     }
@@ -892,7 +899,7 @@ class JsonLogEvent
      * @throws \Throwable
      *      Propagated; from Utils::resolvePath().
      */
-    public function getPath($noSave = false) : string
+    public function getPath($noSave = false): string
     {
         $path = '' . $this->proxy->config->get(static::CONFIG_SECTION, 'path', '');
         if ($path) {
@@ -956,7 +963,7 @@ class JsonLogEvent
      * @return string
      *      Empty if getPath() fails.
      */
-    public function getFile() : string
+    public function getFile(): string
     {
         $file = static::$file;
         if ($file) {
@@ -986,7 +993,7 @@ class JsonLogEvent
      *
      * @return string
      */
-    public function format(array $event, string $format = 'default') : string {
+    public function format(array $event, string $format = 'default'): string {
         switch ($format) {
             case 'pretty':
                 return json_encode(
@@ -1026,7 +1033,7 @@ class JsonLogEvent
      *
      * @return bool
      */
-    public function commit($formattedEvent) : bool
+    public function commit($formattedEvent): bool
     {
         $file = $this->getFile();
         if (!$file) {
@@ -1184,7 +1191,7 @@ class JsonLogEvent
      * @throws \RuntimeException
      *      If not in CLI mode.
      */
-    public function truncate() : string
+    public function truncate(): string
     {
         if (!\SimpleComplex\Utils\CliEnvironment::cli()) {
             throw new \RuntimeException('JsonLog truncate is only allowed in CLI mode.');
