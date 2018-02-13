@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2018-02-13
+-------------------------------------
+- Handle that a column method call may throw or propagate an exception.
+- Release 1.1.
+
 SimpleComplex/JsonLog 1.x, 2017-09-27
 -------------------------------------
 - 'host' method provide host name _and_ port.

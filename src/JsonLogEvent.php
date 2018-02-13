@@ -262,50 +262,106 @@ class JsonLogEvent
     {
         $skip_empty = static::SKIP_EMPTY_COLUMNS;
 
+        // Site columns are reusable across individual entries of a request.
         $site = static::$currentSite;
-        if (!$site) {
-            $columns = static::columnMap('site');
-            foreach ($columns as $method => $name) {
-                $val = $this->{$method}();
-                if (!in_array($method, $skip_empty) || $val || $val !== '') {
-                    $site[$name] = $val;
-                }
-            }
-            unset($columns);
-            static::$currentSite =& $site;
-        }
-
+        // Request columns are reusable across individual entries of a request.
         $request = static::$currentRequest;
-        if (!$request) {
-            $columns = static::columnMap('request');
+        // Event columns are ad hoc.
+        $event = [];
+
+        // Column methods might throw or propagate an exception;
+        // particularly methods of extending class.
+        try {
+            if (!$site) {
+                $columns = static::columnMap('site');
+                foreach ($columns as $method => $name) {
+                    $val = $this->{$method}();
+                    if (!in_array($method, $skip_empty) || $val || $val !== '') {
+                        $site[$name] = $val;
+                    }
+                }
+                unset($columns);
+                static::$currentSite =& $site;
+            }
+
+            if (!$request) {
+                $columns = static::columnMap('request');
+                foreach ($columns as $method => $name) {
+                    $val = $this->{$method}();
+                    if (!in_array($method, $skip_empty) || $val || $val !== '') {
+                        $request[$name] = $val;
+                    }
+                }
+                unset($columns);
+                static::$currentRequest =& $request;
+            }
+
+            $columns = static::columnMap('event');
             foreach ($columns as $method => $name) {
                 $val = $this->{$method}();
                 if (!in_array($method, $skip_empty) || $val || $val !== '') {
-                    $request[$name] = $val;
+                    $event[$name] = $val;
                 }
             }
             unset($columns);
-            static::$currentRequest =& $request;
-        }
 
-        $event = [];
-        $columns = static::columnMap('event');
-        foreach ($columns as $method => $name) {
-            $val = $this->{$method}();
-            if (!in_array($method, $skip_empty) || $val || $val !== '') {
-                $event[$name] = $val;
-            }
-        }
-        unset($columns);
-
-        if ($this->customColumns) {
-            foreach ($this->customColumns as $column => $value) {
-                if (is_callable($value)) {
-                    $event[$column] = '' . $value();
-                } else {
-                    $event[$column] = '' . $value;
+            if ($this->customColumns) {
+                foreach ($this->customColumns as $column => $value) {
+                    if (is_callable($value)) {
+                        $event[$column] = '' . $value();
+                    } else {
+                        $event[$column] = '' . $value;
+                    }
                 }
             }
+        }
+        catch (\Throwable $xcptn) {
+            // Apparantly some column method threw or propagated an exception.
+
+            // Reset site and request column lists, for later events.
+            static::$currentSite = static::$currentRequest = [];
+
+            $site_id = 'unknown';
+            $msg_orig = '';
+            $exception = 'unknown exception';
+            try {
+                // Try to establish siteId.
+                if (!empty(static::COLUMNS_SITE['siteId'])) {
+                    if (!empty($site[static::COLUMNS_SITE['siteId']])) {
+                        $site_id = $site[static::COLUMNS_SITE['siteId']];
+                    } else {
+                        try {
+                            $site_id = $this->siteId(true);
+                        } catch (\Throwable $xcptn) {
+                            $site_id = 'unknown';
+                        }
+                        $site[static::COLUMNS_SITE['siteId']] = $site_id;
+                    }
+                }
+                // Try to save original message.
+                try {
+                    $msg_orig = $site[static::COLUMNS_EVENT['message']] ?? '';
+                } catch (\Throwable $xcptn) {
+                    $msg_orig = '';
+                }
+                // Try to stringify exception.
+                try {
+                    $exception = get_class($xcptn) . '(' . $xcptn->getCode() . ')@' . $xcptn->getFile() . ':'
+                        . $xcptn->getLine() . ': ' . addcslashes($xcptn->getMessage(), "\0..\37");
+                } catch (\Throwable $xcptn) {
+                    $site_id = 'unknown';
+                }
+                // Log to standard log.
+                error_log(
+                    'jsonlog, site ID[' . $site_id . '], failed due to exception raised via a column method call: '
+                    . $exception
+                );
+
+            } catch (\Throwable $ignore) {
+            }
+            $site[static::COLUMNS_EVENT['message']] =
+                'jsonlog failed due to exception raised via a column method call, do check standard error log. '
+                . (!$msg_orig ? 'Original message lost.' : ('Original message: ' . $msg_orig));
         }
 
         $sequence = static::COLUMN_SEQUENCE;
