@@ -614,7 +614,7 @@ class JsonLogEvent
             }
         }
 
-        return $client_ip && $client_ip != filter_var($client_ip, FILTER_VALIDATE_IP) ? $client_ip : '';
+        return $client_ip && $client_ip == filter_var($client_ip, FILTER_VALIDATE_IP) ? $client_ip : '';
     }
 
     /**

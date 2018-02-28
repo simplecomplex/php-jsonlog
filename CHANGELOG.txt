@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2018-02-28
+-------------------------------------
+- Client IP column was never logged, due to (un)equality operator bug.
+- Release 1.2.
+
 SimpleComplex/JsonLog 1.x, 2018-02-13
 -------------------------------------
 - Handle that a column method call may throw or propagate an exception.
