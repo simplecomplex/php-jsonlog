@@ -36,7 +36,7 @@ class JsonLog extends AbstractLogger
     // Psr\Log\AbstractLogger members.
 
     /**
-     * Logs if level is equal to or more severe than a threshold.
+     * Logs event if level is equal to or more severe than a threshold.
      *
      * @see JsonLogEvent
      * @see JsonLogEvent::THRESHOLD_DEFAULT
@@ -83,7 +83,8 @@ class JsonLog extends AbstractLogger
                 $this->config->forget(static::CONFIG_SECTION);
             }
             return;
-        } elseif (!$config_remembered) {
+        }
+        elseif (!$config_remembered) {
             $this->config->remember(static::CONFIG_SECTION);
         }
 
@@ -123,6 +124,63 @@ class JsonLog extends AbstractLogger
         );
         // Relieve config memory.
         $this->config->forget(static::CONFIG_SECTION);
+    }
+
+    /**
+     * Composes event, disregarding severity threshold.
+     *
+     * @see JsonLogEvent
+     * @see JsonLogEvent::THRESHOLD_DEFAULT
+     * @see \Psr\Log\LogLevel
+     *
+     * @param mixed $level
+     *      String (word): value as defined by Psr\Log\LogLevel class constants.
+     *      Integer|stringed integer: between zero and seven; RFC 5424.
+     * @param string $message
+     *      Placeholder {word}s must correspond to keys in the context argument.
+     * @param array $context
+     *
+     * @return array
+     *
+     * @throws \Psr\Log\InvalidArgumentException
+     *      Propagated; invalid level argument.
+     */
+    public function compose($level, $message, array $context = []) : array
+    {
+        // Init.----------------------------------------------------------------
+        // Load dependencies on demand.
+        if (!$this->config) {
+            $this->setConfig(EnvSectionedConfig::getInstance());
+        }
+        if (!$this->unicode) {
+            $this->unicode = Unicode::getInstance();
+        }
+        if (!$this->sanitize) {
+            $this->sanitize = Sanitize::getInstance();
+        }
+
+
+        // Business.------------------------------------------------------------
+
+        // Prime sectioned config; load the whole section into memory.
+        $this->config->remember(static::CONFIG_SECTION);
+
+        $event_class = static::CLASS_JSON_LOG_EVENT;
+        /**
+         * @var JsonLogEvent $event
+         */
+        $event = new $event_class(
+            $this,
+            // LogLevel word.
+            Utils::getInstance()->logLevelToString($level),
+            $message,
+            $context
+        );
+        $list = $event->get();
+        // Relieve config memory.
+        $this->config->forget(static::CONFIG_SECTION);
+
+        return $list;
     }
 
 
