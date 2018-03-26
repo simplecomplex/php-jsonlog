@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2018-03-26
+-------------------------------------
+- Don't chmod and on non posix compliant file system (Windows).
+
 SimpleComplex/JsonLog 1.x, 2018-03-09
 -------------------------------------
 - Compose event, without committing to log.

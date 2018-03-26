@@ -66,6 +66,13 @@ class JsonLogEvent
     const PLACEHOLDER_SUFFIX = '}';
 
     /**
+     * Posix compliant (non-Windows) file system.
+     *
+     * @var bool
+     */
+    const FILE_SYSTEM_POSIX = DIRECTORY_SEPARATOR == '/';
+
+    /**
      * List of site (system) columns.
      *
      * Key is the property's get method; value is the property's name when logged.
@@ -1155,7 +1162,7 @@ class JsonLogEvent
                             $code = 11;
                             $msgs[] = 'A fragment of path is not a directory'
                                 . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
-                        } else {
+                        } elseif (static::FILE_SYSTEM_POSIX) {
                             $mode = fileperms($ancestor_path);
                             $group_write = $utils->isFileGroupWrite($mode);
                         }
@@ -1182,7 +1189,7 @@ class JsonLogEvent
         } elseif (!is_dir($path)) {
             $code = 20;
             $msgs[] = 'Path is not a directory' . (!$is_cli ? '' : (', path[' . $path . ']')) . '.';
-        } else {
+        } elseif (static::FILE_SYSTEM_POSIX) {
             $group_write = $utils->isFileGroupWrite(fileperms($path));
         }
 
