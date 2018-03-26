@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace SimpleComplex\JsonLog;
 
 use Psr\Log\AbstractLogger;
-use SimpleComplex\Config\Interfaces\SectionedConfigInterface;
-use SimpleComplex\Config\EnvSectionedConfig;
+use SimpleComplex\Utils\Interfaces\SectionedMapInterface;
+use SimpleComplex\Utils\SectionedMap;
 use SimpleComplex\Utils\Utils;
 use SimpleComplex\Utils\Unicode;
 use SimpleComplex\Utils\Sanitize;
@@ -59,7 +59,13 @@ class JsonLog extends AbstractLogger
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
         if (!$this->config) {
-            $this->setConfig(EnvSectionedConfig::getInstance());
+            // Use enviroment variable wrapper config class if exists;
+            // fall back on empty sectioned map.
+            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+            } else {
+                $this->config = new SectionedMap();
+            }
         }
 
 
@@ -68,24 +74,14 @@ class JsonLog extends AbstractLogger
         // Sufficiently severe to log?
         $severity = Utils::getInstance()->logLevelToInteger($level);
 
-        $config_remembered = false;
+        // Prime sectioned config; load the whole section into memory.
+        $this->config->remember(static::CONFIG_SECTION);
 
-        if ($this->threshold == -1) {
-            // Prime sectioned config; load the whole section into memory.
-            $this->config->remember(static::CONFIG_SECTION);
-            $config_remembered = true;
-            $this->threshold = (int) $this->config->get(static::CONFIG_SECTION, 'threshold', static::THRESHOLD_DEFAULT);
-        }
         // Less is more.
-        if ($severity > $this->threshold) {
+        if ($severity > $this->config->get(static::CONFIG_SECTION, 'threshold', static::THRESHOLD_DEFAULT)) {
             // Relieve config memory.
-            if ($config_remembered) {
-                $this->config->forget(static::CONFIG_SECTION);
-            }
+            $this->config->forget(static::CONFIG_SECTION);
             return;
-        }
-        elseif (!$config_remembered) {
-            $this->config->remember(static::CONFIG_SECTION);
         }
 
 
@@ -150,7 +146,13 @@ class JsonLog extends AbstractLogger
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
         if (!$this->config) {
-            $this->setConfig(EnvSectionedConfig::getInstance());
+            // Use enviroment variable wrapper config class if exists;
+            // fall back on empty sectioned map.
+            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+            } else {
+                $this->config = new SectionedMap();
+            }
         }
         if (!$this->unicode) {
             $this->unicode = Unicode::getInstance();
@@ -245,7 +247,7 @@ class JsonLog extends AbstractLogger
      *
      * See also ../config-ini/json-log.ini
      *
-     * @var SectionedConfigInterface
+     * @var SectionedMapInterface
      */
     public $config;
 
@@ -267,19 +269,27 @@ class JsonLog extends AbstractLogger
      * SimpleComplex\Config\EnvSectionedConfig as fallback, if no config object
      * passed to constructor and no subsequent call to setConfig().
      *
-     * @see JsonLog::setConfig()
+     * @see \SimpleComplex\Utils\Interfaces\SectionedMapInterface
+     * @see \SimpleComplex\Config\Interfaces\SectionedConfigInterface
      * @see \SimpleComplex\Config\EnvSectionedConfig
      *
-     * @param SectionedConfigInterface|null $config
-     *      Uses/instantiates SimpleComplex\Config\EnvSectionedConfig
-     *      _on demand_, as fallback.
+     * @param SectionedMapInterface|object|array|null $config
+     *      Non-SectionedMapInterface object|array: will be used
+     *          as JsonLog specific settings.
+     *      Null: instance will on demand use
+     *          \SimpleComplex\Config\EnvSectionedConfig, if exists.
      */
-    public function __construct(/*?SectionedConfigInterface*/ $config = null)
+    public function __construct($config = null)
     {
         // Dependencies.--------------------------------------------------------
-        // Extending class' constructor might provide instances by other means.
+        // Extending class' constructor might provide configuration
+        // by other means.
         if (!$this->config && isset($config)) {
-            $this->setConfig($config);
+            if ($config instanceof SectionedMapInterface) {
+                $this->config = $config;
+            } else {
+                $this->config = (new SectionedMap())->setSection(static::CONFIG_SECTION, $config);
+            }
         }
 
         // Business.------------------------------------------------------------
@@ -303,31 +313,16 @@ class JsonLog extends AbstractLogger
     const THRESHOLD_DEFAULT = LOG_WARNING;
 
     /**
-     * Record configured severity threshold across events of a request.
+     * @deprecated
+     *      This method will be removed; doesn't solve anything in terms
+     *      of mutual dependency, and there hardly is any such issue anyway.
      *
-     * Set at every call to setConfig().
-     *
-     * @var integer
-     */
-    protected $threshold = -1;
-
-    /**
-     * Overcome mutual dependency, provide a config object after instantiation.
-     *
-     * This class does not need a config object, if configuration is based on
-     * environment vars, or if defaults are adequate for current system.
-     *
-     * @param SectionedConfigInterface $config
+     * @param SectionedMapInterface $config
      *
      * @return void
      */
-    public function setConfig(SectionedConfigInterface $config)/*: void*/
+    public function setConfig(SectionedMapInterface $config)/*: void*/
     {
-        // Reset cross event vars, if shifting to a new configuration.
-        if ($this->config) {
-            $this->threshold = -1;
-        }
-
         $this->config = $config;
     }
 
@@ -356,7 +351,13 @@ class JsonLog extends AbstractLogger
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
         if (!$this->config) {
-            $this->setConfig(EnvSectionedConfig::getInstance());
+            // Use enviroment variable wrapper config class if exists;
+            // fall back on empty sectioned map.
+            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+            } else {
+                $this->config = new SectionedMap();
+            }
         }
         if (!$this->unicode) {
             $this->unicode = Unicode::getInstance();
@@ -429,7 +430,13 @@ class JsonLog extends AbstractLogger
         // Init.----------------------------------------------------------------
         // Load dependencies on demand.
         if (!$this->config) {
-            $this->setConfig(EnvSectionedConfig::getInstance());
+            // Use enviroment variable wrapper config class if exists;
+            // fall back on empty sectioned map.
+            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+            } else {
+                $this->config = new SectionedMap();
+            }
         }
         if (!$this->unicode) {
             $this->unicode = Unicode::getInstance();

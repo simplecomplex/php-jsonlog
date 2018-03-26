@@ -1,6 +1,9 @@
 SimpleComplex/JsonLog 1.x, 2018-03-26
 -------------------------------------
 - Don't chmod and on non posix compliant file system (Windows).
+- Reduce dependencies: Config package no longer required.
+- Use Utils SectionedMapInterface instead of Config SectionedConfigInterface.
+- Deprecated JsonLog::setConfig(); doesn't solve any (non-existing) problem.
 
 SimpleComplex/JsonLog 1.x, 2018-03-09
 -------------------------------------
