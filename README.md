@@ -106,9 +106,9 @@ See [SimpleComplex Utils](https://github.com/simplecomplex/php-utils) ``` Depend
 
 - PHP >=7.0
 - [PSR-3 Log](https://github.com/php-fig/log)
-- [SimpleComplex Config](https://github.com/simplecomplex/php-config)
 - [SimpleComplex Utils](https://github.com/simplecomplex/php-utils)
 
 ##### Suggestions #####
 
 - [SimpleComplex Inspect](https://github.com/simplecomplex/inspect)
+- [SimpleComplex Config](https://github.com/simplecomplex/php-config)
