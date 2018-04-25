@@ -61,9 +61,13 @@ class JsonLog extends AbstractLogger
         if (!$this->config) {
             // Use enviroment variable wrapper config class if exists;
             // fall back on empty sectioned map.
-            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
-                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
-            } else {
+            try {
+                if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                    $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+                } else {
+                    $this->config = new SectionedMap();
+                }
+            } catch (\Throwable $ignore) {
                 $this->config = new SectionedMap();
             }
         }
@@ -148,9 +152,13 @@ class JsonLog extends AbstractLogger
         if (!$this->config) {
             // Use enviroment variable wrapper config class if exists;
             // fall back on empty sectioned map.
-            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
-                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
-            } else {
+            try {
+                if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                    $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+                } else {
+                    $this->config = new SectionedMap();
+                }
+            } catch (\Throwable $ignore) {
                 $this->config = new SectionedMap();
             }
         }
@@ -353,9 +361,13 @@ class JsonLog extends AbstractLogger
         if (!$this->config) {
             // Use enviroment variable wrapper config class if exists;
             // fall back on empty sectioned map.
-            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
-                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
-            } else {
+            try {
+                if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                    $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+                } else {
+                    $this->config = new SectionedMap();
+                }
+            } catch (\Throwable $ignore) {
                 $this->config = new SectionedMap();
             }
         }
@@ -432,9 +444,13 @@ class JsonLog extends AbstractLogger
         if (!$this->config) {
             // Use enviroment variable wrapper config class if exists;
             // fall back on empty sectioned map.
-            if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
-                $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
-            } else {
+            try {
+                if (class_exists('\\SimpleComplex\\Config\\EnvSectionedConfig')) {
+                    $this->config = call_user_func('\\SimpleComplex\\Config\\EnvSectionedConfig::getInstance');
+                } else {
+                    $this->config = new SectionedMap();
+                }
+            } catch (\Throwable $ignore) {
                 $this->config = new SectionedMap();
             }
         }

@@ -1,3 +1,8 @@
+SimpleComplex/JsonLog 1.x, 2018-04-25
+-------------------------------------
+- Beware of class_exists+autoload; lethal if rubbish spl_autoload.
+- Release 1.4.1.
+
 SimpleComplex/JsonLog 1.x, 2018-04-07
 -------------------------------------
 - Package requires Utils package ^1.2.
