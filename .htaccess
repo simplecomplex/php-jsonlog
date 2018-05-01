@@ -1,0 +1,7 @@
+# Respond 404 Not Found or 403 Forbidden.
+<IfModule mod_alias.c>
+  RedirectMatch 404 .+$
+</IfModule>
+<IfModule !mod_alias.c>
+  Deny from all
+</IfModule>
