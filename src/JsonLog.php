@@ -23,7 +23,7 @@ use SimpleComplex\Utils\Sanitize;
  *
  * Intended as singleton - ::getInstance() - but constructor not protected.
  *
- * @dependency-injection-container logger
+ * @dependency-injection-container-id logger
  *      Suggested ID of the JsonLog instance.
  *
  * @see \SimpleComplex\JsonLog\JsonLogEvent
