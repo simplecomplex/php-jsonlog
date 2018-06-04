@@ -1,3 +1,7 @@
+SimpleComplex/JsonLog 1.x, 2018-06-04
+-------------------------------------
+- (bug) The setting 'reverse_proxy_addresses' is most likely string, not array.
+
 SimpleComplex/JsonLog 1.x, 2018-04-25
 -------------------------------------
 - Beware of class_exists+autoload; lethal if rubbish spl_autoload.

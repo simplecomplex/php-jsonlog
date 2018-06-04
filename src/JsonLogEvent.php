@@ -602,6 +602,9 @@ class JsonLogEvent
                     $ips = str_replace(' ', '', $this->proxy->sanitize->ascii($_SERVER[$proxy_header]));
                     if ($ips) {
                         $ips = explode(',', $ips);
+                        if (is_string($proxy_ips)) {
+                            $proxy_ips = explode(',', str_replace(' ', '', $proxy_ips));
+                        }
                         // Append direct client IP, in case it is missing in the
                         // 'forwarded for' header.
                         $ips[] = $client_ip;
