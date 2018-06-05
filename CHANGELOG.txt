@@ -1,6 +1,7 @@
 SimpleComplex/JsonLog 1.x, 2018-06-04
 -------------------------------------
 - (bug) The setting 'reverse_proxy_addresses' is most likely string, not array.
+- Release 1.4.3.
 
 SimpleComplex/JsonLog 1.x, 2018-04-25
 -------------------------------------
