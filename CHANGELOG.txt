@@ -1,3 +1,9 @@
+SimpleComplex/JsonLog 1.x, 2018-07-28
+-------------------------------------
+- Register CLI command provider in document root .ini file.
+  And don't provide own cli.phpsh; rely on the Utils' package's generic
+  cli.phpsh.
+
 SimpleComplex/JsonLog 1.x, 2018-06-04
 -------------------------------------
 - (bug) The setting 'reverse_proxy_addresses' is most likely string, not array.
