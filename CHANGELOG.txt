@@ -1,8 +1,9 @@
-SimpleComplex/JsonLog 1.x, 2018-07-28
+SimpleComplex/JsonLog 1.x, 2018-07-29
 -------------------------------------
 - Register CLI command provider in document root .ini file.
   And don't provide own cli.phpsh; rely on the Utils' package's generic
   cli.phpsh.
+- Release 1.5.
 
 SimpleComplex/JsonLog 1.x, 2018-06-04
 -------------------------------------

@@ -11,7 +11,9 @@ doc_root=`pwd`
 
 
 ### CLI command providers ##############
-# Register this package's providers.
+# Register this package's providers;
+# PSR-4 path to CliCommandInterface implementation, by command provider alias.
+# echo 'command-provider-alias = \VendorName\PackageName\CliPackageName' >> ${doc_root}'/.utils_cli_command_providers.ini'
 echo 'json-log = \SimpleComplex\JsonLog\CliJsonLog' >> ${doc_root}'/.utils_cli_command_providers.ini'
 
 
