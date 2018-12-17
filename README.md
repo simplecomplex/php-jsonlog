@@ -86,15 +86,15 @@ The simplest approach to that is to **use environment variables**, like
 
 ```bash
 # List all json-log commands and their help.
-php cli.phpsh json-log -h
+php cli.php json-log -h
 # One command's help.
-php cli.phpsh json-log-xxx -h
+php cli.php json-log-xxx -h
 
 # Check/enable JsonLog to write logs.
-php cli.phpsh json-log-committable
+php cli.php json-log-committable
 
 # Truncate current log file.
-php cli.phpsh json-log-truncate
+php cli.php json-log-truncate
 ```
 
 ### Dependency injection container ID: logger ###
